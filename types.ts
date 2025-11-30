@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -25,7 +26,8 @@ export interface Exhibition {
   imageUrl: string;
   location: string;
   category: string;
-  type: 'major' | 'minor'; // New field: major (大展) or minor (小展)
+  type: 'major' | 'minor'; // major (大展) or minor (小展)
+  priceMode: 'free' | 'paid'; // New field: free (免費) or paid (售票)
   tags: string[];
   comments: Comment[];
   rating: number;
