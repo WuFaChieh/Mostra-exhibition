@@ -108,7 +108,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     dateRange: '2024/06/14 - 2024/09/29',
     description: '透過沉浸式光影互動與實體模型，解密文藝復興全能天才達文西的筆記與發明。展覽結合科技與藝術，帶領觀眾走進達文西的異想世界。',
     location: '台北市 · 華山文創園區',
-    category: '親子互動',
+    category: '文創園區',
     type: 'major',
     priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1597926665727-4a123f6d7874?q=80&w=800&auto=format&fit=crop',
@@ -159,7 +159,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     dateRange: '2024/04/15 - 2024/11/10',
     description: '從生物演化的角度探索「視覺」的奧秘。為什麼有些動物看得到紅外線？人類的眼睛又是如何運作的？適合全家大小一起探索的科學展覽。',
     location: '台中市 · 科博館',
-    category: '親子互動',
+    category: '博物館',
     type: 'major',
     priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1535581652167-3d6b98c538a5?q=80&w=800&auto=format&fit=crop',
@@ -244,7 +244,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     dateRange: '2024/06/14 - 2024/10/13',
     description: '全球最紅的數位藝術團隊 teamLab 再次來台！這次帶來「共創」主題，讓觀眾的塗鴉變成展覽的一部分，是今夏最夢幻的打卡點。',
     location: '台北市 · 科教館',
-    category: '親子互動',
+    category: '美術館',
     type: 'major',
     priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1550136513-548af4445338?q=80&w=800&auto=format&fit=crop',
@@ -312,7 +312,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     dateRange: '2024/01/01 - 2024/12/31',
     description: '不僅是展覽，更是玩樂空間。收集台灣古早味童玩與現代環保玩具，推廣「以租代買」的永續概念，適合帶小朋友放電。',
     location: '新北市 · 板橋',
-    category: '親子互動',
+    category: '文創園區',
     type: 'major',
     priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=800&auto=format&fit=crop',
@@ -997,13 +997,13 @@ export default function App() {
               <span className="text-[10px] font-medium">首頁</span>
             </button>
 
-            {/* 2. Collections */}
-            <button 
-              onClick={() => setView('collections')}
-              className={`flex flex-col items-center justify-center gap-1 ${view === 'collections' ? 'text-black' : 'text-gray-400'}`}
+            {/* 2. Small Exhibitions (Swapped from right to left) */}
+             <button 
+              onClick={() => setView('small_exhibitions')}
+              className={`flex flex-col items-center justify-center gap-1 ${view === 'small_exhibitions' ? 'text-black' : 'text-gray-400'}`}
             >
-              <Bookmark size={22} strokeWidth={view === 'collections' ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">收藏</span>
+              <Tent size={22} strokeWidth={view === 'small_exhibitions' ? 2.5 : 2} />
+              <span className="text-[10px] font-medium">小展</span>
             </button>
 
             {/* 3. Center Plus */}
@@ -1016,13 +1016,13 @@ export default function App() {
               </button>
             </div>
 
-            {/* 4. Small Exhibitions (Formerly Categories) */}
-             <button 
-              onClick={() => setView('small_exhibitions')}
-              className={`flex flex-col items-center justify-center gap-1 ${view === 'small_exhibitions' ? 'text-black' : 'text-gray-400'}`}
+            {/* 4. Collections (Swapped from left to right) */}
+            <button 
+              onClick={() => setView('collections')}
+              className={`flex flex-col items-center justify-center gap-1 ${view === 'collections' ? 'text-black' : 'text-gray-400'}`}
             >
-              <Tent size={22} strokeWidth={view === 'small_exhibitions' ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">小展</span>
+              <Bookmark size={22} strokeWidth={view === 'collections' ? 2.5 : 2} />
+              <span className="text-[10px] font-medium">收藏</span>
             </button>
 
             {/* 5. Profile */}
@@ -1064,14 +1064,13 @@ function HomeView({
   // Filter for MAJOR exhibitions only
   const majorExhibitions = exhibitions.filter(ex => ex.type === 'major');
 
-  // Tags for Major Exhibitions
+  // Tags for Major Exhibitions - Removed '親子互動'
   const tags = [
     { name: '免費', icon: <Ticket size={20} /> },
     { name: '售票', icon: <CircleDollarSign size={20} /> },
     { name: '美術館', icon: <Landmark size={20} /> },
     { name: '博物館', icon: <History size={20} /> },
     { name: '文創園區', icon: <Grid size={20} /> },
-    { name: '親子互動', icon: <Baby size={20} /> },
   ];
 
   const filteredExhibitions = selectedTag
