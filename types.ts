@@ -24,12 +24,13 @@ export interface Exhibition {
   description: string;
   imageUrl: string;
   location: string;
-  category: string; // New field for categorization
+  category: string;
+  type: 'major' | 'minor'; // New field: major (大展) or minor (小展)
   tags: string[];
   comments: Comment[];
-  rating: number; // Average rating
-  sourceUrl: string; // URL for the original source
-  bookmarksCount: number; // Total number of times bookmarked
+  rating: number;
+  sourceUrl: string;
+  bookmarksCount: number;
 }
 
 export interface Notification {
@@ -41,4 +42,4 @@ export interface Notification {
   type: 'info' | 'success' | 'alert';
 }
 
-export type ViewState = 'home' | 'collections' | 'categories' | 'detail' | 'login' | 'submit' | 'profile';
+export type ViewState = 'home' | 'collections' | 'small_exhibitions' | 'detail' | 'login' | 'submit' | 'profile';
