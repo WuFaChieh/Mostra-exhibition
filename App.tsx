@@ -951,7 +951,7 @@ export default function App() {
               className={`flex flex-col items-center justify-center gap-1 ${view === 'home' ? 'text-black' : 'text-gray-400'}`}
             >
               <Home size={22} strokeWidth={view === 'home' ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">大展</span>
+              <span className="text-[10px] font-medium">首頁</span>
             </button>
 
             {/* 2. Collections */}
