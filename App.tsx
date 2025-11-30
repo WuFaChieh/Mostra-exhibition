@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
@@ -22,10 +23,12 @@ import {
   Baby,
   History,
   Share2,
-  Tent, // Icon for Small Exhibitions
+  Tent,
   Coffee,
   BookOpen,
-  School
+  School,
+  Ticket,
+  CircleDollarSign
 } from 'lucide-react';
 import { Exhibition, User, Notification, ViewState, Comment } from './types';
 import { generateCuratorInsight, enhanceExhibitionDraft } from './services/geminiService';
@@ -71,6 +74,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台南市 · 奇美博物館',
     category: '博物館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1574169208507-84376144848b?q=80&w=800&auto=format&fit=crop', 
     tags: ['西洋繪畫', '大師真跡', '必看大展'],
     rating: 4.9,
@@ -89,6 +93,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '高雄市 · 高美館',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1541963463532-d68292c34b19?q=80&w=800&auto=format&fit=crop', 
     tags: ['當代藝術', '攝影', '泰特美術館'],
     rating: 4.8,
@@ -105,6 +110,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 華山文創園區',
     category: '親子互動',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1597926665727-4a123f6d7874?q=80&w=800&auto=format&fit=crop',
     tags: ['沈浸式體驗', '親子共遊', '文藝復興'],
     rating: 4.5,
@@ -121,6 +127,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 北美館',
     category: '美術館',
     type: 'major',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1563089145-599997674d42?q=80&w=800&auto=format&fit=crop',
     tags: ['台灣當代', '新銳藝術家', '免費參觀'],
     rating: 4.2,
@@ -137,6 +144,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 富邦美術館',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1555581561-c30d92257217?q=80&w=800&auto=format&fit=crop',
     tags: ['雕塑', '印象派', '國際大展'],
     rating: 4.7,
@@ -153,6 +161,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台中市 · 科博館',
     category: '親子互動',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1535581652167-3d6b98c538a5?q=80&w=800&auto=format&fit=crop',
     tags: ['科普', '生物學', '親子教育'],
     rating: 4.6,
@@ -169,6 +178,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 故宮博物院',
     category: '博物館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1601646272535-6541f5358052?q=80&w=800&auto=format&fit=crop',
     tags: ['珠寶工藝', '故宮', '跨界合作'],
     rating: 4.8,
@@ -185,6 +195,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 信義新天地A11',
     category: '文創園區',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1612404730960-5c71579fca2c?q=80&w=800&auto=format&fit=crop',
     tags: ['動漫', '日本IP', '打卡熱點'],
     rating: 4.4,
@@ -201,6 +212,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · MOCA',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=800&auto=format&fit=crop',
     tags: ['AI藝術', '科技倫理', '當代思辨'],
     rating: 4.3,
@@ -217,6 +229,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台南市 · 南美館',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1570701257322-e42bc5605d7b?q=80&w=800&auto=format&fit=crop',
     tags: ['台南400', '在地文化', '城市記憶'],
     rating: 4.6,
@@ -233,6 +246,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 科教館',
     category: '親子互動',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1550136513-548af4445338?q=80&w=800&auto=format&fit=crop',
     tags: ['數位藝術', 'teamLab', '親子'],
     rating: 4.9,
@@ -249,6 +263,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '屏東市 · 屏東美術館',
     category: '美術館',
     type: 'major',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1511553677255-b93b269a815b?q=80&w=800&auto=format&fit=crop',
     tags: ['木雕', '療癒系', '動物'],
     rating: 4.8,
@@ -265,6 +280,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '宜蘭縣 · 冬山河',
     category: '文創園區',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1533644265403-176378c2e987?q=80&w=800&auto=format&fit=crop',
     tags: ['戶外活動', '親子', '夏日祭典'],
     rating: 4.5,
@@ -281,6 +297,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 中正紀念堂',
     category: '博物館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1633519391081-34440536c04f?q=80&w=800&auto=format&fit=crop',
     tags: ['哈利波特', '自然史', '電影展'],
     rating: 4.7,
@@ -297,6 +314,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '新北市 · 板橋',
     category: '親子互動',
     type: 'major',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?q=80&w=800&auto=format&fit=crop',
     tags: ['玩具', '環保', '免費'],
     rating: 4.2,
@@ -313,6 +331,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '新北市 · 金瓜石',
     category: '歷史人文',
     type: 'major',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1444492417251-9c84a5fa18e0?q=80&w=800&auto=format&fit=crop',
     tags: ['地景藝術', '歷史建築', '戶外'],
     rating: 4.6,
@@ -329,6 +348,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台南市 · 全區',
     category: '文創園區',
     type: 'major',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1561059488-28451b685822?q=80&w=800&auto=format&fit=crop',
     tags: ['設計', '城市美學', '免費'],
     rating: 4.5,
@@ -345,6 +365,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '新北市 · 金山',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1599592476686-3532f8313494?q=80&w=800&auto=format&fit=crop',
     tags: ['夜遊', '雕塑', '戶外美術館'],
     rating: 4.8,
@@ -361,6 +382,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '嘉義市 · 嘉美館',
     category: '美術館',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?q=80&w=800&auto=format&fit=crop',
     tags: ['東南亞', '當代繪畫', '文化交流'],
     rating: 4.1,
@@ -377,6 +399,7 @@ const MAJOR_EXHIBITIONS: Exhibition[] = [
     location: '台南市 · 臺史博',
     category: '歷史人文',
     type: 'major',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1589828989531-18cb93822188?q=80&w=800&auto=format&fit=crop',
     tags: ['冷兵器', '台灣史', '軍事迷'],
     rating: 4.4,
@@ -397,6 +420,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 亞紀畫廊',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1517544845501-bb78ccdadcd7?q=80&w=800&auto=format&fit=crop',
     tags: ['攝影', '黑白', '大師'],
     rating: 4.7,
@@ -413,6 +437,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 朋丁',
     category: '複合空間',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1512413914633-b5043f4041ea?q=80&w=800&auto=format&fit=crop',
     tags: ['獨立出版', '插畫', '文青'],
     rating: 4.5,
@@ -429,6 +454,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 濕地',
     category: '實驗藝術',
     type: 'minor',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=800&auto=format&fit=crop',
     tags: ['新媒體', 'AI', '前衛'],
     rating: 4.2,
@@ -445,6 +471,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 內湖',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?q=80&w=800&auto=format&fit=crop',
     tags: ['油畫', '台灣美術', '收藏'],
     rating: 4.6,
@@ -461,6 +488,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 內湖',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
     tags: ['植物', '療癒', '當代'],
     rating: 4.8,
@@ -477,6 +505,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 華山紅磚區',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1573521193826-58c7dc2e13e3?q=80&w=800&auto=format&fit=crop',
     tags: ['潮流', '公仔', '街頭藝術'],
     rating: 4.4,
@@ -493,6 +522,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 大安區',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1515543167389-c49b0682baeb?q=80&w=800&auto=format&fit=crop',
     tags: ['裝置藝術', '空間', '極簡'],
     rating: 4.3,
@@ -509,6 +539,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 中山區',
     category: '實驗藝術',
     type: 'minor',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=800&auto=format&fit=crop',
     tags: ['錄像', '實驗', '藝術家營運'],
     rating: 4.1,
@@ -525,6 +556,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 松山文創園區',
     category: '校園展',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=800&auto=format&fit=crop',
     tags: ['畢業展', '新銳', '免費'],
     rating: 4.5,
@@ -541,6 +573,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 公館',
     category: '複合空間',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1565151443833-2c5e9b864b43?q=80&w=800&auto=format&fit=crop',
     tags: ['駐村', '聚落', '夜遊'],
     rating: 4.6,
@@ -557,6 +590,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 萬華',
     category: '書店',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1544252890-a1e74f358356?q=80&w=800&auto=format&fit=crop',
     tags: ['插畫', '獨立書店', '似顏繪'],
     rating: 4.7,
@@ -573,6 +607,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 師大',
     category: '書店',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1524578271613-d550eacf6090?q=80&w=800&auto=format&fit=crop',
     tags: ['古書', '版畫', '歷史'],
     rating: 4.8,
@@ -589,6 +624,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 中山',
     category: '複合空間',
     type: 'minor',
+    priceMode: 'paid',
     imageUrl: 'https://images.unsplash.com/photo-1616489953121-778875505688?q=80&w=800&auto=format&fit=crop',
     tags: ['陶藝', '生活美學', '咖啡'],
     rating: 4.6,
@@ -605,6 +641,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 永康街',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1688649842880-60b6d2714224?q=80&w=800&auto=format&fit=crop',
     tags: ['水墨', '書畫', '傳統創新'],
     rating: 4.2,
@@ -621,6 +658,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 信義路',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1541364983171-a8ba01e95cfc?q=80&w=800&auto=format&fit=crop',
     tags: ['抽象', '繪畫', '學術'],
     rating: 4.0,
@@ -637,6 +675,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 內湖',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?q=80&w=800&auto=format&fit=crop',
     tags: ['亞洲當代', '國際觀點', '收藏'],
     rating: 4.3,
@@ -653,6 +692,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 大安區',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1536605068945-813d9c49007f?q=80&w=800&auto=format&fit=crop',
     tags: ['雕塑', '材質', '禪意'],
     rating: 4.5,
@@ -669,6 +709,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 內湖',
     category: '藝廊',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1481277542470-605612bd2d61?q=80&w=800&auto=format&fit=crop',
     tags: ['建築', '大師', '隈研吾'],
     rating: 4.9,
@@ -685,6 +726,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 實踐校區',
     category: '校園展',
     type: 'minor',
+    priceMode: 'free',
     imageUrl: 'https://images.unsplash.com/photo-1558591710-4b4a1ae0f04d?q=80&w=800&auto=format&fit=crop',
     tags: ['設計', '時尚', '畢業展'],
     rating: 4.6,
@@ -701,6 +743,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 文昌街',
     category: '咖啡廳',
     type: 'minor',
+    priceMode: 'paid', // Coffee shop usually requires a drink
     imageUrl: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?q=80&w=800&auto=format&fit=crop',
     tags: ['插畫', '咖啡', '老屋'],
     rating: 4.4,
@@ -951,7 +994,7 @@ export default function App() {
               className={`flex flex-col items-center justify-center gap-1 ${view === 'home' ? 'text-black' : 'text-gray-400'}`}
             >
               <Home size={22} strokeWidth={view === 'home' ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">首頁</span>
+              <span className="text-[10px] font-medium">大展</span>
             </button>
 
             {/* 2. Collections */}
@@ -1016,8 +1059,28 @@ function HomeView({
   onToggleBookmark: (e: React.MouseEvent, id: string) => void,
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
   // Filter for MAJOR exhibitions only
   const majorExhibitions = exhibitions.filter(ex => ex.type === 'major');
+
+  // Tags for Major Exhibitions
+  const tags = [
+    { name: '免費', icon: <Ticket size={20} /> },
+    { name: '售票', icon: <CircleDollarSign size={20} /> },
+    { name: '美術館', icon: <Landmark size={20} /> },
+    { name: '博物館', icon: <History size={20} /> },
+    { name: '文創園區', icon: <Grid size={20} /> },
+    { name: '親子互動', icon: <Baby size={20} /> },
+  ];
+
+  const filteredExhibitions = selectedTag
+    ? majorExhibitions.filter(ex => {
+        if (selectedTag === '免費') return ex.priceMode === 'free';
+        if (selectedTag === '售票') return ex.priceMode === 'paid';
+        return ex.category === selectedTag || ex.tags.includes(selectedTag);
+      })
+    : majorExhibitions;
 
   return (
     <div className="animate-in fade-in duration-500 pb-4">
@@ -1026,65 +1089,97 @@ function HomeView({
         <p className="text-gray-500 text-sm mt-1">博物館與美術館的年度精選</p>
       </div>
       
+      {/* Tags Scroll for Major Exhibitions */}
+      <div className="px-4 overflow-x-auto no-scrollbar mb-6">
+        <div className="flex gap-3 pb-2">
+          <button 
+            onClick={() => setSelectedTag(null)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${!selectedTag ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
+          >
+             <span className="text-xs font-bold">全部</span>
+          </button>
+          {tags.map(tag => (
+             <button
+               key={tag.name}
+               onClick={() => setSelectedTag(tag.name)}
+               className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${selectedTag === tag.name ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
+             >
+               {tag.icon}
+               <span className="text-xs font-bold">{tag.name}</span>
+             </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6 md:grid md:grid-cols-2 lg:grid-cols-3 px-4 md:px-0">
-        {majorExhibitions.map((ex) => {
-          const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
-          return (
-            <div 
-              key={ex.id} 
-              onClick={() => onSelect(ex.id)}
-              className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col"
-            >
-              <div className="relative h-52 md:h-60 overflow-hidden bg-gray-100">
-                <img 
-                  src={ex.imageUrl} 
-                  alt={ex.title} 
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                  loading="lazy"
-                  onError={onImageError}
-                />
-                
-                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
-                  <StarRating rating={ex.rating} size={12} />
-                  <span className="text-xs font-bold ml-1">{ex.rating.toFixed(1)}</span>
-                </div>
-
-                <button 
-                  onClick={(e) => onToggleBookmark(e, ex.id)}
-                  className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1.5 rounded-full shadow-sm flex items-center gap-1.5 hover:bg-white transition-colors group/btn"
-                >
-                   <Bookmark 
-                    size={16} 
-                    className={`${isBookmarked ? 'fill-black text-black' : 'text-gray-400 group-hover/btn:text-black'} transition-colors`} 
-                   />
-                   <span className="text-xs font-bold pr-1 text-gray-600">{ex.bookmarksCount}</span>
-                </button>
-
-                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
-                   <div className="text-white text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
-                     <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px]">{ex.category}</span>
-                   </div>
-                </div>
-              </div>
-              
-              <div className="p-4 md:p-5 flex-1 flex flex-col">
-                <h3 className="text-lg font-bold font-serif mb-1 leading-snug text-gray-900 line-clamp-2">{ex.title}</h3>
-                <p className="text-gray-600 text-sm mb-3 line-clamp-1">{ex.artist}</p>
-                
-                <div className="mt-auto flex flex-col gap-1.5 text-gray-500 text-xs">
-                  <div className="flex items-center gap-2">
-                    <Calendar size={14} className="shrink-0 text-gray-400" />
-                    <span>{ex.dateRange}</span>
+        {filteredExhibitions.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm col-span-full">沒有符合條件的展覽</div>
+        ) : (
+          filteredExhibitions.map((ex) => {
+            const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
+            return (
+              <div 
+                key={ex.id} 
+                onClick={() => onSelect(ex.id)}
+                className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col"
+              >
+                <div className="relative h-52 md:h-60 overflow-hidden bg-gray-100">
+                  <img 
+                    src={ex.imageUrl} 
+                    alt={ex.title} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                    loading="lazy"
+                    onError={onImageError}
+                  />
+                  
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
+                    <div className="bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                      <StarRating rating={ex.rating} size={12} />
+                      <span className="text-xs font-bold ml-1">{ex.rating.toFixed(1)}</span>
+                    </div>
+                    {/* Price Mode Badge */}
+                    <span className={`px-2 py-1 rounded-lg shadow-sm text-xs font-bold backdrop-blur-md ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-700' : 'bg-amber-100/90 text-amber-800'}`}>
+                      {ex.priceMode === 'free' ? '免費' : '售票'}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin size={14} className="shrink-0 text-gray-400" />
-                    <span className="truncate">{ex.location}</span>
+
+                  <button 
+                    onClick={(e) => onToggleBookmark(e, ex.id)}
+                    className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1.5 rounded-full shadow-sm flex items-center gap-1.5 hover:bg-white transition-colors group/btn"
+                  >
+                     <Bookmark 
+                      size={16} 
+                      className={`${isBookmarked ? 'fill-black text-black' : 'text-gray-400 group-hover/btn:text-black'} transition-colors`} 
+                     />
+                     <span className="text-xs font-bold pr-1 text-gray-600">{ex.bookmarksCount}</span>
+                  </button>
+
+                  <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
+                     <div className="text-white text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
+                       <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px]">{ex.category}</span>
+                     </div>
                   </div>
                 </div>
+                
+                <div className="p-4 md:p-5 flex-1 flex flex-col">
+                  <h3 className="text-lg font-bold font-serif mb-1 leading-snug text-gray-900 line-clamp-2">{ex.title}</h3>
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-1">{ex.artist}</p>
+                  
+                  <div className="mt-auto flex flex-col gap-1.5 text-gray-500 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={14} className="shrink-0 text-gray-400" />
+                      <span>{ex.dateRange}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin size={14} className="shrink-0 text-gray-400" />
+                      <span className="truncate">{ex.location}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -1111,6 +1206,8 @@ function SmallExhibitionsView({
 
   // Tags suitable for small exhibitions
   const tags = [
+    { name: '免費', icon: <Ticket size={20} /> },
+    { name: '售票', icon: <CircleDollarSign size={20} /> },
     { name: '藝廊', icon: <Palette size={20} /> },
     { name: '書店', icon: <BookOpen size={20} /> },
     { name: '校園展', icon: <School size={20} /> },
@@ -1120,7 +1217,11 @@ function SmallExhibitionsView({
   ];
 
   const filteredExhibitions = selectedTag 
-    ? minorExhibitions.filter(ex => ex.category === selectedTag || ex.tags.includes(selectedTag))
+    ? minorExhibitions.filter(ex => {
+        if (selectedTag === '免費') return ex.priceMode === 'free';
+        if (selectedTag === '售票') return ex.priceMode === 'paid';
+        return ex.category === selectedTag || ex.tags.includes(selectedTag);
+    })
     : minorExhibitions;
 
   return (
@@ -1165,12 +1266,15 @@ function SmallExhibitionsView({
                   onClick={() => onSelect(ex.id)}
                   className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex h-32 cursor-pointer active:scale-[0.99] transition-transform"
                 >
-                   <div className="w-32 bg-gray-200 shrink-0">
+                   <div className="w-32 bg-gray-200 shrink-0 relative">
                       <img 
                         src={ex.imageUrl} 
                         className="w-full h-full object-cover" 
                         onError={onImageError}
                       />
+                      <span className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-800' : 'bg-amber-100/90 text-amber-800'}`}>
+                         {ex.priceMode === 'free' ? '免費' : '售票'}
+                      </span>
                    </div>
                    <div className="p-3 flex-1 flex flex-col justify-between">
                       <div>
@@ -1200,8 +1304,7 @@ function SmallExhibitionsView({
   );
 }
 
-// ... CollectionsView, DetailView, LoginView, ProfileView remain mostly the same ...
-// Including them to ensure full file integrity if user copy-pastes everything
+// ... CollectionsView, LoginView, ProfileView remain the same ...
 
 function CollectionsView({
   exhibitions,
@@ -1257,12 +1360,15 @@ function CollectionsView({
               onClick={() => onSelect(ex.id)}
               className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex gap-4 cursor-pointer active:scale-[0.99] transition-transform"
             >
-              <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-gray-100">
+              <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
                 <img 
                   src={ex.imageUrl} 
                   className="w-full h-full object-cover" 
                   onError={onImageError}
                 />
+                <span className={`absolute bottom-0 right-0 px-1.5 py-0.5 rounded-tl rounded-br text-[8px] font-bold ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-800' : 'bg-amber-100/90 text-amber-800'}`}>
+                  {ex.priceMode === 'free' ? '免費' : '售票'}
+                </span>
               </div>
               <div className="flex-1 flex flex-col justify-between py-1">
                 <div>
@@ -1394,6 +1500,9 @@ function DetailView({
       <div className="px-5 pt-10 pb-8">
         <div className="mb-6">
           <div className="flex flex-wrap gap-2 mb-3">
+             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${exhibition.priceMode === 'free' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                {exhibition.priceMode === 'free' ? '免費參觀' : '需購票'}
+             </span>
              <span className="px-2.5 py-1 bg-black text-white rounded-full text-xs font-medium">{exhibition.category}</span>
              {exhibition.tags.map(tag => (
                <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">{tag}</span>
@@ -1403,6 +1512,7 @@ function DetailView({
           <p className="text-lg text-gray-500 font-medium">{exhibition.artist}</p>
         </div>
 
+        {/* ... Date, Location, Source URL blocks remain same ... */}
         <div className="grid grid-cols-1 gap-3 mb-6">
            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
               <Calendar size={20} className="text-gray-400" />
@@ -1437,6 +1547,7 @@ function DetailView({
            )}
         </div>
 
+        {/* ... AI Insight block ... */}
         <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-2xl border border-purple-100 shadow-sm mb-8">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
@@ -1466,11 +1577,13 @@ function DetailView({
           )}
         </div>
 
+        {/* ... Description ... */}
         <div className="mb-8">
           <h3 className="font-bold text-lg mb-3">展覽介紹</h3>
           <p className="text-gray-700 leading-relaxed text-base text-justify whitespace-pre-wrap">{exhibition.description}</p>
         </div>
 
+        {/* ... Comments ... */}
         <div className="border-t border-gray-100 pt-8">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
             觀眾評論 
@@ -1629,6 +1742,7 @@ function SubmitView({ user, onSubmit, onCancel }: { user: User, onSubmit: (ex: E
     description: '',
     location: '',
     category: '藝廊',
+    priceMode: 'free' as 'free' | 'paid',
     imageUrl: '',
     dateRange: '',
     sourceUrl: ''
@@ -1747,22 +1861,35 @@ function SubmitView({ user, onSubmit, onCancel }: { user: User, onSubmit: (ex: E
             </div>
           </div>
           
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">分類</label>
-            <select 
-              className="input-base"
-              value={formData.category}
-              onChange={e => setFormData({...formData, category: e.target.value})}
-            >
-              <option value="藝廊">藝廊</option>
-              <option value="複合空間">複合空間</option>
-              <option value="實驗藝術">實驗藝術</option>
-              <option value="書店">書店</option>
-              <option value="咖啡廳">咖啡廳</option>
-              <option value="校園展">校園展</option>
-              <option value="美術館">美術館</option>
-              <option value="博物館">博物館</option>
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">分類</label>
+              <select 
+                className="input-base"
+                value={formData.category}
+                onChange={e => setFormData({...formData, category: e.target.value})}
+              >
+                <option value="藝廊">藝廊</option>
+                <option value="複合空間">複合空間</option>
+                <option value="實驗藝術">實驗藝術</option>
+                <option value="書店">書店</option>
+                <option value="咖啡廳">咖啡廳</option>
+                <option value="校園展">校園展</option>
+                <option value="美術館">美術館</option>
+                <option value="博物館">博物館</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">收費模式</label>
+              <select 
+                className="input-base"
+                value={formData.priceMode}
+                onChange={e => setFormData({...formData, priceMode: e.target.value as 'free'|'paid'})}
+              >
+                <option value="free">免費參觀</option>
+                <option value="paid">售票/消費</option>
+              </select>
+            </div>
           </div>
 
           <div>
