@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Bell, 
@@ -624,7 +623,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     location: '台北市 · 中山',
     category: '複合空間',
     type: 'minor',
-    priceMode: 'paid',
+    priceMode: 'paid', // Coffee shop usually requires a drink
     imageUrl: 'https://images.unsplash.com/photo-1616489953121-778875505688?q=80&w=800&auto=format&fit=crop',
     tags: ['陶藝', '生活美學', '咖啡'],
     rating: 4.6,
@@ -994,7 +993,7 @@ export default function App() {
               className={`flex flex-col items-center justify-center gap-1 ${view === 'home' ? 'text-black' : 'text-gray-400'}`}
             >
               <Home size={22} strokeWidth={view === 'home' ? 2.5 : 2} />
-              <span className="text-[10px] font-medium">首頁</span>
+              <span className="text-[10px] font-medium">大展</span>
             </button>
 
             {/* 2. Small Exhibitions (Swapped from right to left) */}
@@ -1475,7 +1474,7 @@ function DetailView({
             className="w-full h-full object-cover" 
             onError={onImageError}
          />
-         <button onClick={onBack} className="absolute top-safe-top left-4 mt-4 p-2 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white transition-colors z-10">
+         <button onClick={onBack} className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] p-2 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white transition-colors z-10">
            <ChevronLeft size={24} className="text-black" />
          </button>
          
