@@ -31,7 +31,8 @@ import {
   Layers,
   X,
   RotateCcw,
-  Check
+  Check,
+  ArrowRight
 } from 'lucide-react';
 import { Exhibition, User, Notification, ViewState, Comment } from './types';
 import { generateCuratorInsight, enhanceExhibitionDraft } from './services/geminiService';
@@ -781,6 +782,7 @@ export default function App() {
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS);
   const [selectedExhibitionId, setSelectedExhibitionId] = useState<string | null>(null);
   const [redirectAfterLogin, setRedirectAfterLogin] = useState<ViewState | null>(null);
+  const [pendingBookmarks, setPendingBookmarks] = useState<string[]>([]);
   
   // UI State
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -791,7 +793,17 @@ export default function App() {
 
   // Handlers
   const handleLogin = () => {
-    setUser(MOCK_USER);
+    // Create new user object
+    const newUser = { ...MOCK_USER };
+    
+    // Merge pending bookmarks
+    if (pendingBookmarks.length > 0) {
+      newUser.bookmarkedExhibitionIds = [...new Set([...newUser.bookmarkedExhibitionIds, ...pendingBookmarks])];
+    }
+    
+    setUser(newUser);
+    setPendingBookmarks([]);
+
     if (redirectAfterLogin) {
       setView(redirectAfterLogin);
       setRedirectAfterLogin(null);
@@ -876,7 +888,7 @@ export default function App() {
   };
 
   const handleSwipeBookmark = (exId: string) => {
-    if (!user) return; // Silent fail or trigger login if desired
+    if (!user) return; // Silent fail if guest (SwipeDeck handles guest tracking locally now)
     
     // Only bookmark if not already bookmarked
     if (!user.bookmarkedExhibitionIds.includes(exId)) {
@@ -890,6 +902,30 @@ export default function App() {
             }
             return ex;
         }));
+    }
+  };
+
+  const handleBatchAddBookmarks = (ids: string[]) => {
+    if (user) {
+       const newIds = ids.filter(id => !user.bookmarkedExhibitionIds.includes(id));
+       if (newIds.length > 0) {
+           setUser(prev => ({
+               ...prev!,
+               bookmarkedExhibitionIds: [...prev!.bookmarkedExhibitionIds, ...newIds]
+           }));
+           // Update counts visually for immediate feedback
+           setExhibitions(prev => prev.map(ex => {
+             if (newIds.includes(ex.id)) {
+               return { ...ex, bookmarksCount: ex.bookmarksCount + 1 };
+             }
+             return ex;
+           }));
+       }
+       setView('collections');
+    } else {
+       setPendingBookmarks(ids);
+       setRedirectAfterLogin('collections');
+       setView('login');
     }
   };
 
@@ -963,6 +999,8 @@ export default function App() {
             onSelect={(id) => handleNavigate('detail', id)} 
             onToggleBookmark={handleToggleBookmark}
             onSwipeBookmark={handleSwipeBookmark}
+            onBatchAddBookmarks={handleBatchAddBookmarks}
+            onViewCollections={() => setView('collections')}
             onImageError={handleImageError}
           />
         )}
@@ -1077,6 +1115,8 @@ function HomeView({
   onSelect,
   onToggleBookmark,
   onSwipeBookmark,
+  onBatchAddBookmarks,
+  onViewCollections,
   onImageError
 }: { 
   exhibitions: Exhibition[], 
@@ -1084,6 +1124,8 @@ function HomeView({
   onSelect: (id: string) => void,
   onToggleBookmark: (e: React.MouseEvent, id: string) => void,
   onSwipeBookmark: (id: string) => void,
+  onBatchAddBookmarks: (ids: string[]) => void,
+  onViewCollections: () => void,
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -1231,8 +1273,11 @@ function HomeView({
       ) : (
         <SwipeDeck 
           exhibitions={filteredExhibitions} 
+          user={user}
           onBookmark={onSwipeBookmark}
           onSelect={onSelect}
+          onBatchAddBookmarks={onBatchAddBookmarks}
+          onViewCollections={onViewCollections}
           onImageError={onImageError}
         />
       )}
@@ -1242,17 +1287,24 @@ function HomeView({
 
 function SwipeDeck({ 
   exhibitions, 
+  user,
   onBookmark, 
   onSelect,
+  onBatchAddBookmarks,
+  onViewCollections,
   onImageError
 }: { 
   exhibitions: Exhibition[], 
+  user: User | null,
   onBookmark: (id: string) => void,
   onSelect: (id: string) => void,
+  onBatchAddBookmarks: (ids: string[]) => void,
+  onViewCollections: () => void,
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [exitDir, setExitDir] = useState<null | 'left' | 'right'>(null);
+  const [sessionLikedExhibitions, setSessionLikedExhibitions] = useState<Exhibition[]>([]);
 
   const canSwipe = currentIndex < exhibitions.length;
   const currentExhibition = exhibitions[currentIndex];
@@ -1262,6 +1314,8 @@ function SwipeDeck({
     setExitDir(direction);
     if (direction === 'right') {
         onBookmark(currentExhibition.id);
+        // Track locally for summary view (Guest mode support)
+        setSessionLikedExhibitions(prev => [...prev, currentExhibition]);
     }
     setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
@@ -1271,23 +1325,56 @@ function SwipeDeck({
 
   const handleReset = () => {
     setCurrentIndex(0);
+    setSessionLikedExhibitions([]);
+  };
+
+  const handleSaveSession = () => {
+    const ids = sessionLikedExhibitions.map(ex => ex.id);
+    onBatchAddBookmarks(ids);
   };
 
   if (!canSwipe) {
     return (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[50vh]">
-            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[50vh] animate-in fade-in duration-500">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6 shadow-sm">
                 <Check size={40} className="text-green-500" />
             </div>
-            <h2 className="text-xl font-bold mb-2">已看完所有卡片！</h2>
-            <p className="text-gray-500 mb-6">您已瀏覽完目前的篩選結果。</p>
-            <button 
-                onClick={handleReset}
-                className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full font-bold shadow-lg active:scale-95 transition-transform"
-            >
-                <RotateCcw size={18} />
-                重新瀏覽
-            </button>
+            <h2 className="text-2xl font-bold font-serif mb-2">探索完成！</h2>
+            <p className="text-gray-500 mb-8 text-sm">您已瀏覽完目前的篩選結果。</p>
+            
+            {sessionLikedExhibitions.length > 0 && (
+              <div className="w-full mb-8">
+                <p className="text-xs font-bold text-gray-500 uppercase mb-3 text-left">您喜歡的展覽 ({sessionLikedExhibitions.length})</p>
+                <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
+                   {sessionLikedExhibitions.map(ex => (
+                     <div key={ex.id} className="w-20 shrink-0 flex flex-col gap-1">
+                        <img src={ex.imageUrl} className="w-20 h-20 rounded-lg object-cover border border-gray-100" onError={onImageError}/>
+                        <span className="text-[10px] text-gray-600 truncate">{ex.title}</span>
+                     </div>
+                   ))}
+                </div>
+              </div>
+            )}
+
+            <div className="w-full space-y-3">
+              {sessionLikedExhibitions.length > 0 && (
+                <button 
+                  onClick={handleSaveSession}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-black text-white rounded-xl font-bold shadow-lg shadow-black/20 active:scale-95 transition-transform"
+                >
+                  {user ? <Bookmark size={18} className="fill-white" /> : <LogIn size={18} />}
+                  {user ? "查看收藏" : "登入並儲存收藏"}
+                </button>
+              )}
+              
+              <button 
+                  onClick={handleReset}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-900 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 active:scale-95 transition-transform"
+              >
+                  <RotateCcw size={18} />
+                  重新瀏覽
+              </button>
+            </div>
         </div>
     );
   }
