@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Bell, 
   MapPin, 
@@ -27,7 +27,11 @@ import {
   BookOpen,
   School,
   Ticket,
-  CircleDollarSign
+  CircleDollarSign,
+  Layers,
+  X,
+  RotateCcw,
+  Check
 } from 'lucide-react';
 import { Exhibition, User, Notification, ViewState, Comment } from './types';
 import { generateCuratorInsight, enhanceExhibitionDraft } from './services/geminiService';
@@ -871,6 +875,24 @@ export default function App() {
     }));
   };
 
+  const handleSwipeBookmark = (exId: string) => {
+    if (!user) return; // Silent fail or trigger login if desired
+    
+    // Only bookmark if not already bookmarked
+    if (!user.bookmarkedExhibitionIds.includes(exId)) {
+        setUser(prev => ({
+            ...prev!,
+            bookmarkedExhibitionIds: [...prev!.bookmarkedExhibitionIds, exId]
+        }));
+        setExhibitions(prev => prev.map(ex => {
+            if (ex.id === exId) {
+                return { ...ex, bookmarksCount: ex.bookmarksCount + 1 };
+            }
+            return ex;
+        }));
+    }
+  };
+
   const markNotificationsRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
@@ -937,6 +959,7 @@ export default function App() {
             user={user} 
             onSelect={(id) => handleNavigate('detail', id)} 
             onToggleBookmark={handleToggleBookmark}
+            onSwipeBookmark={handleSwipeBookmark}
             onImageError={handleImageError}
           />
         )}
@@ -1050,15 +1073,18 @@ function HomeView({
   user,
   onSelect,
   onToggleBookmark,
+  onSwipeBookmark,
   onImageError
 }: { 
   exhibitions: Exhibition[], 
   user: User | null,
   onSelect: (id: string) => void,
   onToggleBookmark: (e: React.MouseEvent, id: string) => void,
+  onSwipeBookmark: (id: string) => void,
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
 
   // Filter for MAJOR exhibitions only
   const majorExhibitions = exhibitions.filter(ex => ex.type === 'major');
@@ -1081,14 +1107,32 @@ function HomeView({
     : majorExhibitions;
 
   return (
-    <div className="animate-in fade-in duration-500 pb-4">
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-serif font-bold text-gray-900">必看大展</h1>
-        <p className="text-gray-500 text-sm mt-1">博物館與美術館的年度精選</p>
+    <div className="animate-in fade-in duration-500 pb-4 h-full flex flex-col">
+      <div className="px-4 pt-6 pb-4 flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-serif font-bold text-gray-900">必看大展</h1>
+          <p className="text-gray-500 text-sm mt-1">博物館與美術館的年度精選</p>
+        </div>
+        
+        {/* View Toggle */}
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          <button 
+            onClick={() => setViewMode('grid')}
+            className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}
+          >
+            <Grid size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode('deck')}
+            className={`p-1.5 rounded-md transition-all ${viewMode === 'deck' ? 'bg-white shadow-sm text-black' : 'text-gray-400'}`}
+          >
+            <Layers size={18} />
+          </button>
+        </div>
       </div>
       
       {/* Tags Scroll for Major Exhibitions */}
-      <div className="px-4 overflow-x-auto no-scrollbar mb-6">
+      <div className="px-4 overflow-x-auto no-scrollbar mb-6 flex-shrink-0">
         <div className="flex gap-3 pb-2">
           <button 
             onClick={() => setSelectedTag(null)}
@@ -1109,78 +1153,309 @@ function HomeView({
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 md:grid md:grid-cols-2 lg:grid-cols-3 px-4 md:px-0">
-        {filteredExhibitions.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 text-sm col-span-full">沒有符合條件的展覽</div>
-        ) : (
-          filteredExhibitions.map((ex) => {
-            const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
-            return (
-              <div 
-                key={ex.id} 
-                onClick={() => onSelect(ex.id)}
-                className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col"
-              >
-                <div className="relative h-52 md:h-60 overflow-hidden bg-gray-100">
-                  <img 
-                    src={ex.imageUrl} 
-                    alt={ex.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                    loading="lazy"
-                    onError={onImageError}
-                  />
-                  
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
-                    <div className="bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
-                      <StarRating rating={ex.rating} size={12} />
-                      <span className="text-xs font-bold ml-1">{ex.rating.toFixed(1)}</span>
+      {/* Content Area */}
+      {viewMode === 'grid' ? (
+        <div className="flex flex-col gap-6 md:grid md:grid-cols-2 lg:grid-cols-3 px-4 md:px-0">
+          {filteredExhibitions.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 text-sm col-span-full">沒有符合條件的展覽</div>
+          ) : (
+            filteredExhibitions.map((ex) => {
+              const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
+              return (
+                <div 
+                  key={ex.id} 
+                  onClick={() => onSelect(ex.id)}
+                  className="group bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg active:scale-[0.98] transition-all duration-200 cursor-pointer flex flex-col"
+                >
+                  <div className="relative h-52 md:h-60 overflow-hidden bg-gray-100">
+                    <img 
+                      src={ex.imageUrl} 
+                      alt={ex.title} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      loading="lazy"
+                      onError={onImageError}
+                    />
+                    
+                    <div className="absolute top-3 left-3 flex items-center gap-2">
+                      <div className="bg-white/95 backdrop-blur-md px-2 py-1 rounded-lg shadow-sm flex items-center gap-1">
+                        <StarRating rating={ex.rating} size={12} />
+                        <span className="text-xs font-bold ml-1">{ex.rating.toFixed(1)}</span>
+                      </div>
+                      {/* Price Mode Badge */}
+                      <span className={`px-2 py-1 rounded-lg shadow-sm text-xs font-bold backdrop-blur-md ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-700' : 'bg-amber-100/90 text-amber-800'}`}>
+                        {ex.priceMode === 'free' ? '免費' : '售票'}
+                      </span>
                     </div>
-                    {/* Price Mode Badge */}
-                    <span className={`px-2 py-1 rounded-lg shadow-sm text-xs font-bold backdrop-blur-md ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-700' : 'bg-amber-100/90 text-amber-800'}`}>
-                      {ex.priceMode === 'free' ? '免費' : '售票'}
-                    </span>
+
+                    <button 
+                      onClick={(e) => onToggleBookmark(e, ex.id)}
+                      className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1.5 rounded-full shadow-sm flex items-center gap-1.5 hover:bg-white transition-colors group/btn"
+                    >
+                       <Bookmark 
+                        size={16} 
+                        className={`${isBookmarked ? 'fill-black text-black' : 'text-gray-400 group-hover/btn:text-black'} transition-colors`} 
+                       />
+                       <span className="text-xs font-bold pr-1 text-gray-600">{ex.bookmarksCount}</span>
+                    </button>
+
+                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
+                       <div className="text-white text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
+                         <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px]">{ex.category}</span>
+                       </div>
+                    </div>
                   </div>
-
-                  <button 
-                    onClick={(e) => onToggleBookmark(e, ex.id)}
-                    className="absolute top-3 right-3 bg-white/95 backdrop-blur-md p-1.5 rounded-full shadow-sm flex items-center gap-1.5 hover:bg-white transition-colors group/btn"
-                  >
-                     <Bookmark 
-                      size={16} 
-                      className={`${isBookmarked ? 'fill-black text-black' : 'text-gray-400 group-hover/btn:text-black'} transition-colors`} 
-                     />
-                     <span className="text-xs font-bold pr-1 text-gray-600">{ex.bookmarksCount}</span>
-                  </button>
-
-                  <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4 pt-12">
-                     <div className="text-white text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-2">
-                       <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px]">{ex.category}</span>
-                     </div>
+                  
+                  <div className="p-4 md:p-5 flex-1 flex flex-col">
+                    <h3 className="text-lg font-bold font-serif mb-1 leading-snug text-gray-900 line-clamp-2">{ex.title}</h3>
+                    <p className="text-gray-600 text-sm mb-3 line-clamp-1">{ex.artist}</p>
+                    
+                    <div className="mt-auto flex flex-col gap-1.5 text-gray-500 text-xs">
+                      <div className="flex items-center gap-2">
+                        <Calendar size={14} className="shrink-0 text-gray-400" />
+                        <span>{ex.dateRange}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin size={14} className="shrink-0 text-gray-400" />
+                        <span className="truncate">{ex.location}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                
-                <div className="p-4 md:p-5 flex-1 flex flex-col">
-                  <h3 className="text-lg font-bold font-serif mb-1 leading-snug text-gray-900 line-clamp-2">{ex.title}</h3>
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-1">{ex.artist}</p>
-                  
-                  <div className="mt-auto flex flex-col gap-1.5 text-gray-500 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={14} className="shrink-0 text-gray-400" />
-                      <span>{ex.dateRange}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <MapPin size={14} className="shrink-0 text-gray-400" />
-                      <span className="truncate">{ex.location}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+        <SwipeDeck 
+          exhibitions={filteredExhibitions} 
+          onBookmark={onSwipeBookmark}
+          onSelect={onSelect}
+          onImageError={onImageError}
+        />
+      )}
     </div>
   );
+}
+
+function SwipeDeck({ 
+  exhibitions, 
+  onBookmark, 
+  onSelect,
+  onImageError
+}: { 
+  exhibitions: Exhibition[], 
+  onBookmark: (id: string) => void,
+  onSelect: (id: string) => void,
+  onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [exitDir, setExitDir] = useState<null | 'left' | 'right'>(null);
+
+  const canSwipe = currentIndex < exhibitions.length;
+  const currentExhibition = exhibitions[currentIndex];
+  const nextExhibition = exhibitions[currentIndex + 1];
+
+  const handleSwipe = (direction: 'left' | 'right') => {
+    setExitDir(direction);
+    if (direction === 'right') {
+        onBookmark(currentExhibition.id);
+    }
+    setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setExitDir(null);
+    }, 200); // Wait for animation
+  };
+
+  const handleReset = () => {
+    setCurrentIndex(0);
+  };
+
+  if (!canSwipe) {
+    return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[50vh]">
+            <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <Check size={40} className="text-green-500" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">已看完所有卡片！</h2>
+            <p className="text-gray-500 mb-6">您已瀏覽完目前的篩選結果。</p>
+            <button 
+                onClick={handleReset}
+                className="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-full font-bold shadow-lg active:scale-95 transition-transform"
+            >
+                <RotateCcw size={18} />
+                重新瀏覽
+            </button>
+        </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col items-center relative overflow-hidden px-4 pb-4">
+        <div className="relative w-full max-w-sm aspect-[3/4] md:aspect-[3/4] lg:h-[500px]">
+             {/* Background Cards (Visual Stack) */}
+             {nextExhibition && (
+                 <div className="absolute top-0 left-0 w-full h-full rounded-3xl bg-gray-100 scale-95 translate-y-4 opacity-60 z-0">
+                     <img src={nextExhibition.imageUrl} className="w-full h-full object-cover rounded-3xl" onError={onImageError} />
+                 </div>
+             )}
+
+             {/* Draggable Top Card */}
+             <DraggableCard 
+                key={currentExhibition.id}
+                exhibition={currentExhibition}
+                onSwipe={handleSwipe}
+                onSelect={() => onSelect(currentExhibition.id)}
+                exitDir={exitDir}
+                onImageError={onImageError}
+             />
+        </div>
+
+        {/* Controls */}
+        <div className="flex items-center gap-6 mt-8">
+            <button 
+                onClick={() => handleSwipe('left')}
+                className="w-14 h-14 rounded-full bg-white border border-gray-200 shadow-md text-red-500 flex items-center justify-center hover:scale-110 hover:bg-red-50 transition-all active:scale-90"
+            >
+                <X size={28} strokeWidth={2.5} />
+            </button>
+            <button 
+                 onClick={() => onSelect(currentExhibition.id)}
+                 className="w-10 h-10 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center hover:bg-gray-200 transition-all"
+            >
+                 <Info size={20} />
+            </button>
+            <button 
+                onClick={() => handleSwipe('right')}
+                className="w-14 h-14 rounded-full bg-white border border-gray-200 shadow-md text-green-500 flex items-center justify-center hover:scale-110 hover:bg-green-50 transition-all active:scale-90"
+            >
+                <Heart size={28} className="fill-current" />
+            </button>
+        </div>
+    </div>
+  );
+}
+
+interface DraggableCardProps {
+    exhibition: Exhibition;
+    onSwipe: (dir: 'left' | 'right') => void;
+    onSelect: () => void;
+    exitDir: 'left' | 'right' | null;
+    onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void;
+}
+
+const DraggableCard: React.FC<DraggableCardProps> = ({ 
+    exhibition, 
+    onSwipe, 
+    onSelect,
+    exitDir,
+    onImageError
+}) => {
+    const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const cardRef = useRef<HTMLDivElement>(null);
+    const startPos = useRef({ x: 0, y: 0 });
+
+    const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+        setIsDragging(true);
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        startPos.current = { x: clientX, y: clientY };
+    };
+
+    const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+        if (!isDragging) return;
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        
+        const deltaX = clientX - startPos.current.x;
+        const deltaY = clientY - startPos.current.y;
+        setDragPosition({ x: deltaX, y: deltaY });
+    };
+
+    const handleTouchEnd = () => {
+        setIsDragging(false);
+        if (dragPosition.x > 120) {
+            onSwipe('right');
+        } else if (dragPosition.x < -120) {
+            onSwipe('left');
+        } else {
+            setDragPosition({ x: 0, y: 0 }); // Reset
+        }
+    };
+
+    // Calculate rotation and opacity overlays
+    const rotate = dragPosition.x * 0.1;
+    const likeOpacity = Math.max(0, dragPosition.x / 100);
+    const nopeOpacity = Math.max(0, -dragPosition.x / 100);
+    
+    // Animation for exit
+    let transformStyle = `translate(${dragPosition.x}px, ${dragPosition.y}px) rotate(${rotate}deg)`;
+    let transitionStyle = isDragging ? 'none' : 'transform 0.3s ease-out';
+
+    if (exitDir === 'left') {
+        transformStyle = `translate(-200%, 0px) rotate(-20deg)`;
+        transitionStyle = 'transform 0.4s ease-in';
+    } else if (exitDir === 'right') {
+        transformStyle = `translate(200%, 0px) rotate(20deg)`;
+        transitionStyle = 'transform 0.4s ease-in';
+    }
+
+    return (
+        <div 
+            ref={cardRef}
+            className="absolute top-0 left-0 w-full h-full bg-white rounded-3xl shadow-xl overflow-hidden cursor-grab active:cursor-grabbing z-10 border border-gray-100"
+            style={{ transform: transformStyle, transition: transitionStyle }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onMouseDown={handleTouchStart}
+            onMouseMove={handleTouchMove}
+            onMouseUp={handleTouchEnd}
+            onMouseLeave={handleTouchEnd}
+        >
+            <img 
+                src={exhibition.imageUrl} 
+                alt={exhibition.title} 
+                className="w-full h-full object-cover pointer-events-none select-none" 
+                onError={onImageError}
+            />
+
+            {/* Overlays */}
+            <div className="absolute top-8 left-8 border-4 border-green-500 text-green-500 px-4 py-1 rounded-lg font-black text-4xl -rotate-12 opacity-0 pointer-events-none select-none" style={{ opacity: likeOpacity }}>
+                LIKE
+            </div>
+            <div className="absolute top-8 right-8 border-4 border-red-500 text-red-500 px-4 py-1 rounded-lg font-black text-4xl rotate-12 opacity-0 pointer-events-none select-none" style={{ opacity: nopeOpacity }}>
+                NOPE
+            </div>
+
+            {/* Content Gradient */}
+            <div 
+                className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/60 to-transparent pt-24 pb-6 px-6 pointer-events-auto"
+                onClick={(e) => { e.stopPropagation(); onSelect(); }} // Allow click to view detail
+            >
+                <div className="flex flex-wrap gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${exhibition.priceMode === 'free' ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
+                        {exhibition.priceMode === 'free' ? '免費' : '售票'}
+                    </span>
+                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-white rounded text-[10px] font-bold">
+                        {exhibition.category}
+                    </span>
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-1 leading-tight text-shadow-sm">{exhibition.title}</h2>
+                <p className="text-gray-200 text-sm mb-3 font-medium">{exhibition.artist}</p>
+                <div className="flex items-center gap-4 text-white/80 text-xs">
+                    <div className="flex items-center gap-1.5">
+                        <MapPin size={14} />
+                        <span>{exhibition.location.split(' · ')[1]}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <Calendar size={14} />
+                        <span>{exhibition.dateRange.split(' - ')[0]}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 // Replaces CategoriesView with SmallExhibitionsView
@@ -1301,8 +1576,6 @@ function SmallExhibitionsView({
     </div>
   );
 }
-
-// ... CollectionsView, LoginView, ProfileView remain the same ...
 
 function CollectionsView({
   exhibitions,
@@ -1895,31 +2168,4 @@ function SubmitView({ user, onSubmit, onCancel }: { user: User, onSubmit: (ex: E
             <input 
               required
               type="url"
-              className="input-base"
-              placeholder="https://..."
-              value={formData.sourceUrl}
-              onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
-            />
-          </div>
-
-          <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">封面圖片網址 (選填)</label>
-              <input 
-                className="input-base"
-                placeholder="https://..."
-                value={formData.imageUrl}
-                onChange={e => setFormData({...formData, imageUrl: e.target.value})}
-              />
-          </div>
-        </form>
-      </div>
-      
-      <style>{`
-        .input-base { width: 100%; padding: 0.75rem; border-radius: 0.75rem; background-color: #f9fafb; border: 1px solid #f3f4f6; font-size: 0.9rem; outline: none; transition: all 0.2s; }
-        .input-base:focus { background-color: white; border-color: black; box-shadow: 0 0 0 1px black; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-    </div>
-  );
-}
+              className="input-base
