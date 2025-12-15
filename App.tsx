@@ -691,7 +691,7 @@ const MINOR_EXHIBITIONS: Exhibition[] = [
     title: '木與石的對話',
     artist: '赤粒藝術',
     dateRange: '2024/09/01 - 2024/10/10',
-    description: '以材質為導向的雕塑展。藝術家利用自然的木頭與石頭，保留材質本身的紋理，創作出充滿禪意的作品。',
+    description: '以材質為導向的雕塑展。藝術家們透過自然的木頭與石頭，保留材質本身的紋理，創作出充滿禪意的作品。',
     location: '台北市 · 大安區',
     category: '藝廊',
     type: 'minor',
@@ -916,11 +916,14 @@ export default function App() {
           <div className="relative">
             <button 
               onClick={() => { setIsNotifOpen(!isNotifOpen); if(!isNotifOpen) markNotificationsRead(); }}
-              className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-full relative"
+              className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-full relative transition-colors"
             >
-              <Bell size={22} />
+              <Bell size={22} className={isNotifOpen ? "text-black fill-black" : ""} />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white"></span>
+                <>
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white z-10"></span>
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75"></span>
+                </>
               )}
             </button>
             
@@ -2168,4 +2171,14 @@ function SubmitView({ user, onSubmit, onCancel }: { user: User, onSubmit: (ex: E
             <input 
               required
               type="url"
-              className="input-base
+              className="input-base"
+              placeholder="https://..."
+              value={formData.sourceUrl}
+              onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
+            />
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
