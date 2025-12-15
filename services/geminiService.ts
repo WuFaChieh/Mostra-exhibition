@@ -1,14 +1,14 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { Exhibition } from "../types";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Always use process.env.API_KEY directly as per guidelines
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * 生成策展人觀點 (短評)
  */
 export const generateCuratorInsight = async (exhibition: Exhibition): Promise<string> => {
-  if (!apiKey) return "缺少 API 金鑰，無法提供 AI 觀點。";
+  if (!process.env.API_KEY) return "缺少 API 金鑰，無法提供 AI 觀點。";
 
   try {
     const prompt = `
@@ -37,7 +37,7 @@ export const generateCuratorInsight = async (exhibition: Exhibition): Promise<st
  * 優化展覽草稿 (標題與描述)
  */
 export const enhanceExhibitionDraft = async (rawIdea: string): Promise<{ title: string, description: string }> => {
-  if (!apiKey) return { title: "未命名展覽", description: rawIdea };
+  if (!process.env.API_KEY) return { title: "未命名展覽", description: rawIdea };
 
   try {
     const prompt = `
@@ -45,8 +45,6 @@ export const enhanceExhibitionDraft = async (rawIdea: string): Promise<{ title: 
       請用繁體中文 (Traditional Chinese) 幫忙優化內容，回傳 JSON 格式：
       1. title: 一個吸引人的展覽標題 (20字內)。
       2. description: 一段流暢的展覽介紹 (80字內)。
-      
-      請嚴格回傳 JSON 格式。
     `;
 
     const response = await ai.models.generateContent({
@@ -54,6 +52,20 @@ export const enhanceExhibitionDraft = async (rawIdea: string): Promise<{ title: 
       contents: prompt,
       config: {
         responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: {
+              type: Type.STRING,
+              description: "一個吸引人的展覽標題 (20字內)",
+            },
+            description: {
+              type: Type.STRING,
+              description: "一段流暢的展覽介紹 (80字內)",
+            },
+          },
+          required: ["title", "description"],
+        }
       }
     });
     
