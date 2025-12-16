@@ -32,7 +32,9 @@ import {
   X,
   RotateCcw,
   Check,
-  ArrowRight
+  ArrowRight,
+  List,
+  MessageCircle
 } from 'lucide-react';
 import { Exhibition, User, Notification, ViewState, Comment } from './types';
 import { generateCuratorInsight, enhanceExhibitionDraft } from './services/geminiService';
@@ -1129,7 +1131,8 @@ function HomeView({
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'deck'>('grid');
+  // Default to deck view
+  const [viewMode, setViewMode] = useState<'grid' | 'deck'>('deck');
 
   // Filter for MAJOR exhibitions only
   const majorExhibitions = exhibitions.filter(ex => ex.type === 'major');
@@ -1278,6 +1281,7 @@ function HomeView({
           onSelect={onSelect}
           onBatchAddBookmarks={onBatchAddBookmarks}
           onViewCollections={onViewCollections}
+          onSwitchToGrid={() => setViewMode('grid')}
           onImageError={onImageError}
         />
       )}
@@ -1292,6 +1296,7 @@ function SwipeDeck({
   onSelect,
   onBatchAddBookmarks,
   onViewCollections,
+  onSwitchToGrid,
   onImageError
 }: { 
   exhibitions: Exhibition[], 
@@ -1300,6 +1305,7 @@ function SwipeDeck({
   onSelect: (id: string) => void,
   onBatchAddBookmarks: (ids: string[]) => void,
   onViewCollections: () => void,
+  onSwitchToGrid: () => void,
   onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -1368,10 +1374,18 @@ function SwipeDeck({
               )}
               
               <button 
-                  onClick={handleReset}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-900 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 active:scale-95 transition-transform"
+                onClick={onSwitchToGrid}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-gray-900 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 active:scale-95 transition-transform"
               >
-                  <RotateCcw size={18} />
+                <List size={18} />
+                查看完整列表
+              </button>
+
+              <button 
+                  onClick={handleReset}
+                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gray-50 text-gray-500 border border-transparent rounded-xl font-bold hover:bg-gray-100 active:scale-95 transition-transform text-xs"
+              >
+                  <RotateCcw size={16} />
                   重新瀏覽
               </button>
             </div>
@@ -1464,289 +1478,160 @@ const DraggableCard: React.FC<DraggableCardProps> = ({
 
     const handleTouchEnd = () => {
         setIsDragging(false);
-        if (dragPosition.x > 120) {
+        const threshold = 100;
+        if (dragPosition.x > threshold) {
             onSwipe('right');
-        } else if (dragPosition.x < -120) {
+        } else if (dragPosition.x < -threshold) {
             onSwipe('left');
         } else {
-            setDragPosition({ x: 0, y: 0 }); // Reset
+            setDragPosition({ x: 0, y: 0 });
         }
     };
 
-    // Calculate rotation and opacity overlays
-    const rotate = dragPosition.x * 0.1;
-    const likeOpacity = Math.max(0, dragPosition.x / 100);
-    const nopeOpacity = Math.max(0, -dragPosition.x / 100);
-    
-    // Animation for exit
-    let transformStyle = `translate(${dragPosition.x}px, ${dragPosition.y}px) rotate(${rotate}deg)`;
-    let transitionStyle = isDragging ? 'none' : 'transform 0.3s ease-out';
+    const getRotation = () => {
+        if (exitDir === 'left') return -20;
+        if (exitDir === 'right') return 20;
+        return dragPosition.x * 0.1;
+    };
 
-    if (exitDir === 'left') {
-        transformStyle = `translate(-200%, 0px) rotate(-20deg)`;
-        transitionStyle = 'transform 0.4s ease-in';
-    } else if (exitDir === 'right') {
-        transformStyle = `translate(200%, 0px) rotate(20deg)`;
-        transitionStyle = 'transform 0.4s ease-in';
-    }
+    const getTranslateX = () => {
+        if (exitDir === 'left') return -1000;
+        if (exitDir === 'right') return 1000;
+        return dragPosition.x;
+    };
 
     return (
         <div 
             ref={cardRef}
-            className="absolute top-0 left-0 w-full h-full bg-white rounded-3xl shadow-xl overflow-hidden cursor-grab active:cursor-grabbing z-10 border border-gray-100"
-            style={{ transform: transformStyle, transition: transitionStyle }}
+            className="absolute top-0 left-0 w-full h-full rounded-3xl bg-white shadow-xl overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing border border-gray-100"
+            style={{ 
+                transform: `translateX(${getTranslateX()}px) translateY(${dragPosition.y * 0.1}px) rotate(${getRotation()}deg)`,
+                transition: isDragging ? 'none' : 'transform 0.5s ease-out'
+            }}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onMouseDown={handleTouchStart}
             onMouseMove={handleTouchMove}
             onMouseUp={handleTouchEnd}
-            onMouseLeave={handleTouchEnd}
+            onMouseLeave={() => { if(isDragging) handleTouchEnd() }}
         >
-            <img 
-                src={exhibition.imageUrl} 
-                alt={exhibition.title} 
-                className="w-full h-full object-cover pointer-events-none select-none" 
-                onError={onImageError}
-            />
-
-            {/* Overlays */}
-            <div className="absolute top-8 left-8 border-4 border-green-500 text-green-500 px-4 py-1 rounded-lg font-black text-4xl -rotate-12 opacity-0 pointer-events-none select-none" style={{ opacity: likeOpacity }}>
-                LIKE
-            </div>
-            <div className="absolute top-8 right-8 border-4 border-red-500 text-red-500 px-4 py-1 rounded-lg font-black text-4xl rotate-12 opacity-0 pointer-events-none select-none" style={{ opacity: nopeOpacity }}>
-                NOPE
-            </div>
-
-            {/* Content Gradient */}
-            <div 
-                className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black via-black/60 to-transparent pt-24 pb-6 px-6 pointer-events-auto"
-                onClick={(e) => { e.stopPropagation(); onSelect(); }} // Allow click to view detail
-            >
-                <div className="flex flex-wrap gap-2 mb-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${exhibition.priceMode === 'free' ? 'bg-green-500 text-white' : 'bg-amber-500 text-white'}`}>
-                        {exhibition.priceMode === 'free' ? '免費' : '售票'}
-                    </span>
-                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-white rounded text-[10px] font-bold">
+             <div className="relative w-full h-full pointer-events-none">
+                <img src={exhibition.imageUrl} className="w-full h-full object-cover" onError={onImageError} draggable={false} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                
+                {/* Overlay Text */}
+                <div className="absolute bottom-0 left-0 w-full p-6 text-white pb-16">
+                    <div className="bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block text-xs font-bold mb-2">
                         {exhibition.category}
-                    </span>
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-1 leading-tight text-shadow-sm">{exhibition.title}</h2>
-                <p className="text-gray-200 text-sm mb-3 font-medium">{exhibition.artist}</p>
-                <div className="flex items-center gap-4 text-white/80 text-xs">
-                    <div className="flex items-center gap-1.5">
+                    </div>
+                    <h2 className="text-3xl font-serif font-bold leading-tight mb-2 drop-shadow-md">{exhibition.title}</h2>
+                    <p className="text-white/80 text-sm flex items-center gap-1">
                         <MapPin size={14} />
-                        <span>{exhibition.location.split(' · ')[1]}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                        <Calendar size={14} />
-                        <span>{exhibition.dateRange.split(' - ')[0]}</span>
-                    </div>
+                        {exhibition.location}
+                    </p>
                 </div>
-            </div>
+
+                {/* Like/Nope Overlays */}
+                <div 
+                    className="absolute top-8 left-8 border-4 border-green-500 rounded-lg px-4 py-1 -rotate-12 opacity-0 transition-opacity"
+                    style={{ opacity: dragPosition.x > 50 ? (dragPosition.x / 150) : 0 }}
+                >
+                    <span className="text-green-500 font-black text-2xl uppercase tracking-widest">LIKE</span>
+                </div>
+                <div 
+                    className="absolute top-8 right-8 border-4 border-red-500 rounded-lg px-4 py-1 rotate-12 opacity-0 transition-opacity"
+                    style={{ opacity: dragPosition.x < -50 ? (Math.abs(dragPosition.x) / 150) : 0 }}
+                >
+                    <span className="text-red-500 font-black text-2xl uppercase tracking-widest">NOPE</span>
+                </div>
+             </div>
+
+             {/* Info Button Overlay (Clickable) */}
+             <div 
+                className="absolute top-4 right-4 bg-black/30 backdrop-blur-md p-2 rounded-full pointer-events-auto cursor-pointer active:scale-95 transition-transform"
+                onClick={(e) => { e.stopPropagation(); onSelect(); }}
+                onTouchEnd={(e) => { e.stopPropagation(); }}
+             >
+                <Info size={24} className="text-white" />
+             </div>
         </div>
     );
-}
+};
 
-// Replaces CategoriesView with SmallExhibitionsView
-function SmallExhibitionsView({
-  exhibitions,
-  user,
-  onSelect,
-  onToggleBookmark,
-  onImageError
-}: {
-  exhibitions: Exhibition[],
-  user: User | null,
-  onSelect: (id: string) => void,
-  onToggleBookmark: (e: React.MouseEvent, id: string) => void,
-  onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
-}) {
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
-
-  // Filter for MINOR exhibitions
-  const minorExhibitions = exhibitions.filter(ex => ex.type === 'minor');
-
-  // Tags suitable for small exhibitions
-  const tags = [
-    { name: '免費', icon: <Ticket size={20} /> },
-    { name: '售票', icon: <CircleDollarSign size={20} /> },
-    { name: '藝廊', icon: <Palette size={20} /> },
-    { name: '書店', icon: <BookOpen size={20} /> },
-    { name: '校園展', icon: <School size={20} /> },
-    { name: '咖啡廳', icon: <Coffee size={20} /> },
-    { name: '複合空間', icon: <Grid size={20} /> },
-    { name: '實驗藝術', icon: <Sparkles size={20} /> },
-  ];
-
-  const filteredExhibitions = selectedTag 
-    ? minorExhibitions.filter(ex => {
-        if (selectedTag === '免費') return ex.priceMode === 'free';
-        if (selectedTag === '售票') return ex.priceMode === 'paid';
-        return ex.category === selectedTag || ex.tags.includes(selectedTag);
-    })
-    : minorExhibitions;
-
-  return (
-    <div className="animate-in fade-in duration-500 pb-4">
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-serif font-bold text-gray-900">探索小展</h1>
-        <p className="text-gray-500 text-sm mt-1">藝廊、獨立空間與巷弄裡的驚喜</p>
-      </div>
-
-      {/* Tags Scroll */}
-      <div className="px-4 overflow-x-auto no-scrollbar mb-6">
-        <div className="flex gap-3 pb-2">
-          <button 
-            onClick={() => setSelectedTag(null)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${!selectedTag ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
-          >
-             <span className="text-xs font-bold">全部小展</span>
-          </button>
-          {tags.map(tag => (
-             <button
-               key={tag.name}
-               onClick={() => setSelectedTag(tag.name)}
-               className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all whitespace-nowrap ${selectedTag === tag.name ? 'bg-black text-white border-black' : 'bg-white text-gray-600 border-gray-200'}`}
-             >
-               {tag.icon}
-               <span className="text-xs font-bold">{tag.name}</span>
-             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* List */}
-      <div className="px-4 flex flex-col gap-4">
-         {filteredExhibitions.length === 0 ? (
-           <div className="text-center py-12 text-gray-400 text-sm">此分類目前沒有展覽</div>
-         ) : (
-           filteredExhibitions.map(ex => {
-              const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
-              return (
-                <div 
-                  key={ex.id} 
-                  onClick={() => onSelect(ex.id)}
-                  className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden flex h-32 cursor-pointer active:scale-[0.99] transition-transform"
-                >
-                   <div className="w-32 bg-gray-200 shrink-0 relative">
-                      <img 
-                        src={ex.imageUrl} 
-                        className="w-full h-full object-cover" 
-                        onError={onImageError}
-                      />
-                      <span className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-800' : 'bg-amber-100/90 text-amber-800'}`}>
-                         {ex.priceMode === 'free' ? '免費' : '售票'}
-                      </span>
-                   </div>
-                   <div className="p-3 flex-1 flex flex-col justify-between">
-                      <div>
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium inline-block">{ex.category}</span>
-                          <StarRating rating={ex.rating} size={10} />
-                        </div>
-                        <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-0.5">{ex.title}</h3>
-                        <p className="text-xs text-gray-500 line-clamp-1">{ex.artist}</p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-1 text-xs text-gray-400">
-                           <MapPin size={10} />
-                           <span className="truncate max-w-[8rem]">{ex.location.split(' · ')[1] || ex.location}</span>
-                         </div>
-                         <button onClick={(e) => onToggleBookmark(e, ex.id)}>
-                            <Bookmark size={16} className={isBookmarked ? "fill-black text-black" : "text-gray-300"} />
-                         </button>
-                      </div>
-                   </div>
-                </div>
-              );
-           })
-         )}
-      </div>
-    </div>
-  );
-}
-
-function CollectionsView({
-  exhibitions,
-  user,
-  onSelect,
-  onToggleBookmark,
-  onLoginReq,
-  onGoHome,
-  onImageError
-}: {
-  exhibitions: Exhibition[],
-  user: User | null,
-  onSelect: (id: string) => void,
-  onToggleBookmark: (e: React.MouseEvent, id: string) => void,
-  onLoginReq: () => void,
-  onGoHome: () => void,
-  onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
+function CollectionsView({ 
+    exhibitions, 
+    user, 
+    onSelect,
+    onToggleBookmark,
+    onLoginReq,
+    onGoHome,
+    onImageError
+}: { 
+    exhibitions: Exhibition[], 
+    user: User | null, 
+    onSelect: (id: string) => void,
+    onToggleBookmark: (e: React.MouseEvent, id: string) => void,
+    onLoginReq: () => void,
+    onGoHome: () => void,
+    onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
   if (!user) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center animate-in fade-in zoom-in-95 duration-300">
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">
           <Bookmark size={32} className="text-gray-400" />
         </div>
-        <h2 className="text-xl font-bold font-serif mb-2">登入以查看收藏</h2>
-        <p className="text-gray-500 text-sm mb-6">建立您的專屬展覽清單，隨時回顧精彩內容。</p>
-        <button onClick={onLoginReq} className="bg-black text-white px-8 py-3 rounded-full font-bold text-sm shadow-lg shadow-black/20">
+        <h2 className="text-xl font-serif font-bold text-gray-900 mb-2">查看您的收藏</h2>
+        <p className="text-gray-500 mb-8 max-w-xs">登入後即可建立專屬的展覽清單，隨時回顧喜愛的藝術活動。</p>
+        <button 
+          onClick={onLoginReq}
+          className="bg-black text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-black/20 hover:scale-105 transition-transform w-full max-w-xs"
+        >
           立即登入
         </button>
       </div>
     );
   }
 
-  const bookmarkedExhibitions = exhibitions.filter(ex => user.bookmarkedExhibitionIds.includes(ex.id));
+  const savedExhibitions = exhibitions.filter(ex => user.bookmarkedExhibitionIds.includes(ex.id));
 
   return (
-    <div className="animate-in fade-in duration-500 pb-4">
-      <div className="px-4 pt-6 pb-4">
-        <h1 className="text-2xl font-serif font-bold text-gray-900">我的收藏</h1>
-        <p className="text-gray-500 text-sm mt-1">共收藏 {bookmarkedExhibitions.length} 個展覽</p>
-      </div>
-
-      {bookmarkedExhibitions.length === 0 ? (
-         <div className="min-h-[40vh] flex flex-col items-center justify-center text-center p-8">
-            <p className="text-gray-400 mb-4">您的收藏清單還是空的</p>
-            <button onClick={onGoHome} className="text-black font-bold text-sm border-b border-black pb-0.5">前往探索展覽</button>
-         </div>
+    <div className="px-4 py-6 min-h-full animate-in fade-in duration-500">
+      <h1 className="text-2xl font-serif font-bold mb-6">我的收藏</h1>
+      
+      {savedExhibitions.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 border-dashed">
+          <p className="text-gray-400 mb-4">還沒有收藏任何展覽</p>
+          <button onClick={onGoHome} className="text-black font-bold text-sm border-b-2 border-black pb-0.5">去探索</button>
+        </div>
       ) : (
-        <div className="flex flex-col gap-4 px-4">
-          {bookmarkedExhibitions.map(ex => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {savedExhibitions.map(ex => (
             <div 
               key={ex.id} 
               onClick={() => onSelect(ex.id)}
-              className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex gap-4 cursor-pointer active:scale-[0.99] transition-transform"
+              className="flex bg-white p-3 rounded-2xl gap-4 border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
-              <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-gray-100 relative">
-                <img 
-                  src={ex.imageUrl} 
-                  className="w-full h-full object-cover" 
-                  onError={onImageError}
-                />
-                <span className={`absolute bottom-0 right-0 px-1.5 py-0.5 rounded-tl rounded-br text-[8px] font-bold ${ex.priceMode === 'free' ? 'bg-green-100/90 text-green-800' : 'bg-amber-100/90 text-amber-800'}`}>
-                  {ex.priceMode === 'free' ? '免費' : '售票'}
-                </span>
+              <div className="w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-gray-100">
+                <img src={ex.imageUrl} alt={ex.title} className="w-full h-full object-cover" onError={onImageError} />
               </div>
               <div className="flex-1 flex flex-col justify-between py-1">
                 <div>
-                  <h3 className="font-bold text-sm text-gray-900 line-clamp-2 mb-1">{ex.title}</h3>
+                  <h3 className="font-bold text-sm leading-tight line-clamp-2 mb-1">{ex.title}</h3>
                   <p className="text-xs text-gray-500">{ex.artist}</p>
                 </div>
-                <div className="flex items-center justify-between mt-2">
-                   <div className="flex items-center gap-1 text-xs text-gray-400">
-                      <StarRating rating={ex.rating} size={10} />
-                      <span className="font-bold ml-0.5">{ex.rating.toFixed(1)}</span>
-                   </div>
-                   <button 
-                     onClick={(e) => onToggleBookmark(e, ex.id)}
-                     className="p-2 -mr-2 text-black hover:bg-gray-100 rounded-full"
-                   >
-                     <Bookmark size={18} className="fill-black" />
-                   </button>
+                <div className="flex justify-between items-end">
+                  <div className="flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 px-2 py-1 rounded-md">
+                    <Calendar size={10} />
+                    <span>{ex.dateRange.split(' - ')[0]}</span>
+                  </div>
+                  <button 
+                    onClick={(e) => onToggleBookmark(e, ex.id)}
+                    className="p-1.5 hover:bg-red-50 rounded-full group"
+                  >
+                    <Bookmark size={16} className="fill-black text-black group-hover:text-red-500 group-hover:fill-red-500 transition-colors" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1757,61 +1642,106 @@ function CollectionsView({
   );
 }
 
-function DetailView({ 
-  exhibition, 
-  user, 
-  onBack, 
-  onAddComment,
-  onLoginReq,
-  onToggleBookmark,
-  onImageError
+function SmallExhibitionsView({ 
+    exhibitions, 
+    user,
+    onSelect,
+    onToggleBookmark,
+    onImageError
 }: { 
-  exhibition: Exhibition, 
-  user: User | null, 
-  onBack: () => void,
-  onAddComment: (id: string, comment: Comment) => void,
-  onLoginReq: () => void,
-  onToggleBookmark: (e: React.MouseEvent, id: string) => void,
-  onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
+    exhibitions: Exhibition[], 
+    user: User | null,
+    onSelect: (id: string) => void,
+    onToggleBookmark: (e: React.MouseEvent, id: string) => void,
+    onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
 }) {
-  const [commentText, setCommentText] = useState('');
-  const [userRating, setUserRating] = useState(5);
+  const minorExhibitions = exhibitions.filter(ex => ex.type === 'minor');
+
+  return (
+    <div className="animate-in fade-in duration-500 px-4 py-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-serif font-bold text-gray-900">探索小展</h1>
+        <p className="text-gray-500 text-sm mt-1">獨立藝廊、學校畢製與另類空間</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {minorExhibitions.map(ex => {
+          const isBookmarked = user?.bookmarkedExhibitionIds.includes(ex.id) || false;
+          return (
+            <div 
+              key={ex.id}
+              onClick={() => onSelect(ex.id)}
+              className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
+            >
+              <div className="aspect-square relative overflow-hidden bg-gray-100">
+                 <img src={ex.imageUrl} alt={ex.title} className="w-full h-full object-cover" onError={onImageError} />
+                 <span className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded">
+                   {ex.category}
+                 </span>
+                 {isBookmarked && (
+                   <div className="absolute top-2 right-2 bg-white/90 p-1 rounded-full shadow-sm">
+                     <Bookmark size={12} className="fill-black" />
+                   </div>
+                 )}
+              </div>
+              <div className="p-3 flex flex-col flex-1">
+                <h3 className="font-bold text-sm leading-tight mb-1 line-clamp-2">{ex.title}</h3>
+                <p className="text-xs text-gray-500 mb-2 line-clamp-1">{ex.artist}</p>
+                <div className="mt-auto flex items-center justify-between">
+                   <span className="text-[10px] text-gray-400">{ex.location.split(' · ')[0]}</span>
+                   <button 
+                     onClick={(e) => onToggleBookmark(e, ex.id)}
+                     className="text-gray-300 hover:text-black"
+                   >
+                     <Bookmark size={14} className={isBookmarked ? "fill-black text-black" : ""} />
+                   </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DetailView({ 
+    exhibition, 
+    user, 
+    onBack, 
+    onAddComment,
+    onLoginReq,
+    onToggleBookmark,
+    onImageError
+}: { 
+    exhibition: Exhibition, 
+    user: User | null, 
+    onBack: () => void, 
+    onAddComment: (id: string, c: Comment) => void,
+    onLoginReq: () => void,
+    onToggleBookmark: (e: React.MouseEvent, id: string) => void,
+    onImageError: (e: React.SyntheticEvent<HTMLImageElement, Event>) => void
+}) {
+  const [commentText, setCommentText] = useState("");
+  const [userRating, setUserRating] = useState(0);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
-  const [isLoadingAi, setIsLoadingAi] = useState(false);
 
   const isBookmarked = user?.bookmarkedExhibitionIds.includes(exhibition.id) || false;
 
-  const handleGenerateInsight = async () => {
-    setIsLoadingAi(true);
+  const handleAiInsight = async () => {
+    setIsAiLoading(true);
     const insight = await generateCuratorInsight(exhibition);
     setAiInsight(insight);
-    setIsLoadingAi(false);
+    setIsAiLoading(false);
   };
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: exhibition.title,
-          text: `推薦這個展覽給你：${exhibition.title} @ ${exhibition.artist}\n${exhibition.description}`,
-          url: window.location.href
-        });
-      } catch (err) {
-        console.log('Share failed', err);
-      }
-    } else {
-      alert('您的瀏覽器不支援原生分享功能');
-    }
-  };
-
-  const handleSubmitComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim()) return;
-    
+  const submitComment = () => {
     if (!user) {
-      onLoginReq();
-      return;
+        onLoginReq();
+        return;
     }
+    if (!commentText.trim() || userRating === 0) return;
 
     const newComment: Comment = {
       id: Date.now().toString(),
@@ -1824,183 +1754,190 @@ function DetailView({
     };
 
     onAddComment(exhibition.id, newComment);
-    setCommentText('');
-    setUserRating(5);
+    setCommentText("");
+    setUserRating(0);
   };
 
   return (
-    <div className="animate-in slide-in-from-right-8 duration-300 bg-white min-h-screen pb-20">
-      <div className="relative h-64 md:h-96 w-full">
-         <img 
-            src={exhibition.imageUrl} 
-            alt={exhibition.title} 
-            className="w-full h-full object-cover" 
-            onError={onImageError}
-         />
-         <button onClick={onBack} className="absolute left-4 top-[calc(env(safe-area-inset-top)+1rem)] p-2 bg-white/80 backdrop-blur rounded-full shadow-sm hover:bg-white transition-colors z-10">
-           <ChevronLeft size={24} className="text-black" />
-         </button>
-         
-         <div className="absolute -bottom-6 right-6 z-10 flex gap-3">
-           <button 
-             onClick={handleShare}
-             className="w-12 h-12 bg-white text-black rounded-full shadow-lg shadow-black/10 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-           >
-              <Share2 size={20} />
-           </button>
-           
-           <button 
-             onClick={(e) => onToggleBookmark(e, exhibition.id)}
-             className="w-12 h-12 bg-black text-white rounded-full shadow-lg shadow-black/20 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
-           >
-              <Bookmark size={20} className={isBookmarked ? "fill-white" : ""} />
-           </button>
-         </div>
+    <div className="bg-white min-h-screen animate-in slide-in-from-bottom-10 duration-300 relative z-50 pb-20">
+      
+      {/* Navbar for Detail */}
+      <div className="fixed top-0 left-0 w-full z-10 p-4 flex justify-between items-start pointer-events-none">
+        <button 
+          onClick={onBack} 
+          className="bg-white/80 backdrop-blur-md p-2.5 rounded-full shadow-sm text-black hover:bg-white pointer-events-auto transition-transform active:scale-95 border border-gray-100/50"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div className="flex gap-2 pointer-events-auto">
+             <button className="bg-white/80 backdrop-blur-md p-2.5 rounded-full shadow-sm text-black hover:bg-white transition-transform active:scale-95 border border-gray-100/50">
+                <Share2 size={20} />
+             </button>
+             <button 
+                onClick={(e) => onToggleBookmark(e, exhibition.id)}
+                className="bg-white/80 backdrop-blur-md p-2.5 rounded-full shadow-sm text-black hover:bg-white transition-transform active:scale-95 border border-gray-100/50"
+             >
+                <Bookmark size={20} className={isBookmarked ? "fill-black" : ""} />
+             </button>
+        </div>
       </div>
 
-      <div className="px-5 pt-10 pb-8">
-        <div className="mb-6">
-          <div className="flex flex-wrap gap-2 mb-3">
-             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${exhibition.priceMode === 'free' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                {exhibition.priceMode === 'free' ? '免費參觀' : '需購票'}
+      {/* Hero Image */}
+      <div className="relative w-full h-[50vh]">
+        <img 
+            src={exhibition.imageUrl} 
+            alt={exhibition.title} 
+            className="w-full h-full object-cover"
+            onError={onImageError}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 w-full p-6 text-white">
+           <div className="flex gap-2 mb-3">
+             <span className="bg-white/20 backdrop-blur-md px-2 py-1 rounded text-xs font-bold">{exhibition.category}</span>
+             <span className={`bg-white/20 backdrop-blur-md px-2 py-1 rounded text-xs font-bold ${exhibition.priceMode === 'free' ? 'text-green-300' : 'text-amber-300'}`}>
+                {exhibition.priceMode === 'free' ? '免費參觀' : '售票入場'}
              </span>
-             <span className="px-2.5 py-1 bg-black text-white rounded-full text-xs font-medium">{exhibition.category}</span>
-             {exhibition.tags.map(tag => (
-               <span key={tag} className="px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">{tag}</span>
-             ))}
-          </div>
-          <h1 className="text-2xl font-serif font-bold text-gray-900 mb-2 leading-tight">{exhibition.title}</h1>
-          <p className="text-lg text-gray-500 font-medium">{exhibition.artist}</p>
+           </div>
+           <h1 className="text-2xl md:text-3xl font-serif font-bold leading-tight mb-2">{exhibition.title}</h1>
+           <p className="text-white/80 font-medium">{exhibition.artist}</p>
+        </div>
+      </div>
+
+      {/* Content Body */}
+      <div className="px-6 py-8 -mt-6 rounded-t-3xl bg-white relative">
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="bg-gray-50 p-4 rounded-2xl flex flex-col gap-1">
+                <Calendar size={20} className="text-gray-400 mb-1" />
+                <span className="text-xs text-gray-500 font-bold uppercase">展覽期間</span>
+                <span className="text-sm font-medium">{exhibition.dateRange}</span>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-2xl flex flex-col gap-1">
+                <MapPin size={20} className="text-gray-400 mb-1" />
+                <span className="text-xs text-gray-500 font-bold uppercase">地點</span>
+                <span className="text-sm font-medium truncate">{exhibition.location}</span>
+            </div>
         </div>
 
-        {/* ... Date, Location, Source URL blocks remain same ... */}
-        <div className="grid grid-cols-1 gap-3 mb-6">
-           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <Calendar size={20} className="text-gray-400" />
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-400 font-bold uppercase">展覽期間</span>
-                <span className="text-sm font-medium">{exhibition.dateRange}</span>
-              </div>
+        {/* AI Insight Section */}
+        <div className="mb-8 p-5 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-100">
+           <div className="flex justify-between items-center mb-3">
+             <div className="flex items-center gap-2">
+               <Sparkles size={18} className="text-indigo-600" />
+               <span className="font-bold text-indigo-900 text-sm">AI 策展人觀點</span>
+             </div>
+             {!aiInsight && (
+               <button 
+                 onClick={handleAiInsight} 
+                 disabled={isAiLoading}
+                 className="text-xs bg-white px-3 py-1.5 rounded-full text-indigo-600 font-bold shadow-sm hover:shadow active:scale-95 transition-all disabled:opacity-50"
+               >
+                 {isAiLoading ? <Loader2 size={12} className="animate-spin" /> : "生成解說"}
+               </button>
+             )}
            </div>
-           <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-              <MapPin size={20} className="text-gray-400" />
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-400 font-bold uppercase">地點</span>
-                <span className="text-sm font-medium">{exhibition.location}</span>
-              </div>
-           </div>
-           {exhibition.sourceUrl && (
-             <a 
-               href={exhibition.sourceUrl} 
-               target="_blank" 
-               rel="noopener noreferrer" 
-               className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100 active:bg-blue-100 transition-colors"
-             >
-                <Info size={20} className="text-blue-500" />
-                <div className="flex flex-col flex-1">
-                  <span className="text-xs text-blue-400 font-bold uppercase">資料來源</span>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-medium text-blue-700">前往官方網站/社群</span>
-                    <ExternalLink size={12} className="text-blue-700" />
-                  </div>
-                </div>
-             </a>
+           {aiInsight ? (
+              <p className="text-sm text-indigo-800 leading-relaxed font-serif italic animate-in fade-in">
+                "{aiInsight}"
+              </p>
+           ) : (
+              <p className="text-xs text-indigo-400">點擊按鈕，讓 AI 為您解析這場展覽的獨特之處。</p>
            )}
         </div>
 
-        {/* ... AI Insight block ... */}
-        <div className="bg-gradient-to-br from-purple-50 to-white p-5 rounded-2xl border border-purple-100 shadow-sm mb-8">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2 text-purple-900 font-bold text-sm">
-              <Sparkles size={16} />
-              <h3>AI 策展人觀點</h3>
-            </div>
-            {!aiInsight && !isLoadingAi && (
-              <button 
-                onClick={handleGenerateInsight}
-                className="text-xs bg-purple-600 text-white px-4 py-1.5 rounded-full font-medium hover:bg-purple-700 transition-colors active:scale-95"
-              >
-                生成解析
-              </button>
-            )}
-          </div>
-          
-          {isLoadingAi ? (
-            <div className="flex justify-center py-4">
-              <Loader2 size={24} className="animate-spin text-purple-300" />
-            </div>
-          ) : aiInsight ? (
-            <p className="text-purple-900/80 text-sm leading-relaxed text-justify">
-              {aiInsight}
-            </p>
-          ) : (
-            <p className="text-purple-400 text-xs">不知道該不該看展？讓 AI 為您提供專業導讀。</p>
-          )}
-        </div>
-
-        {/* ... Description ... */}
+        {/* Description */}
         <div className="mb-8">
-          <h3 className="font-bold text-lg mb-3">展覽介紹</h3>
-          <p className="text-gray-700 leading-relaxed text-base text-justify whitespace-pre-wrap">{exhibition.description}</p>
+           <h3 className="text-lg font-bold mb-3 font-serif">展覽介紹</h3>
+           <p className="text-gray-600 leading-relaxed text-sm text-justify">
+             {exhibition.description}
+           </p>
+           <div className="mt-4 flex flex-wrap gap-2">
+             {exhibition.tags.map(tag => (
+               <span key={tag} className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">#{tag}</span>
+             ))}
+           </div>
         </div>
 
-        {/* ... Comments ... */}
-        <div className="border-t border-gray-100 pt-8">
-          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-            觀眾評論 
-            <span className="bg-gray-100 text-gray-500 text-xs py-0.5 px-2 rounded-full">{exhibition.comments.length}</span>
-          </h3>
-          
-          <div className="bg-gray-50 p-4 rounded-xl mb-6">
-             {user ? (
-               <form onSubmit={handleSubmitComment}>
-                 <div className="mb-3 flex items-center justify-between">
-                   <label className="text-xs font-bold text-gray-500 uppercase">您的評分</label>
-                   <StarRating rating={userRating} setRating={setUserRating} interactive size={20} />
-                 </div>
-                 <div className="relative">
-                   <textarea
-                     className="w-full p-3 pr-10 rounded-lg border border-gray-200 focus:ring-1 focus:ring-black focus:border-black outline-none resize-none h-20 text-sm bg-white"
-                     placeholder="寫下您的觀展心得..."
-                     value={commentText}
-                     onChange={(e) => setCommentText(e.target.value)}
-                   ></textarea>
-                   <button 
-                      type="submit" 
-                      disabled={!commentText.trim()}
-                      className="absolute bottom-2 right-2 p-1.5 bg-black text-white rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
-                   >
-                     <Send size={14} />
-                   </button>
-                 </div>
-               </form>
-             ) : (
-               <div className="flex flex-col items-center py-3 gap-2">
-                 <p className="text-gray-500 text-sm">登入後即可發表評論</p>
-                 <button onClick={onLoginReq} className="text-xs font-bold bg-white border border-gray-200 px-4 py-2 rounded-full hover:bg-gray-50">
-                    前往登入
-                 </button>
-               </div>
-             )}
-          </div>
+        <div className="mb-8">
+            <a href={exhibition.sourceUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between w-full p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                <span className="font-bold text-sm">前往官方網站購票/詳情</span>
+                <ExternalLink size={16} className="text-gray-400" />
+            </a>
+        </div>
 
-          <div className="space-y-5">
-            {exhibition.comments.map(comment => (
-              <div key={comment.id} className="flex gap-3">
-                <img src={comment.userAvatar} alt={comment.userName} className="w-8 h-8 rounded-full object-cover border border-gray-200 mt-1" />
-                <div className="flex-1">
-                  <div className="bg-gray-50/50 p-3 rounded-xl rounded-tl-none border border-gray-50">
-                     <div className="flex justify-between items-center mb-1">
-                       <span className="font-bold text-xs text-gray-900">{comment.userName}</span>
-                       <span className="text-[10px] text-gray-400">{comment.date}</span>
-                     </div>
-                     <div className="mb-1"><StarRating rating={comment.rating} size={10} /></div>
-                     <p className="text-sm text-gray-700 leading-relaxed">{comment.text}</p>
-                  </div>
-                </div>
+        {/* Comments Section */}
+        <div className="border-t border-gray-100 pt-8">
+           <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold font-serif">觀展評論 ({exhibition.comments.length})</h3>
+              <div className="flex items-center gap-1">
+                 <StarRating rating={exhibition.rating} size={14} />
+                 <span className="text-sm font-bold ml-1">{exhibition.rating.toFixed(1)}</span>
               </div>
-            ))}
-          </div>
+           </div>
+           
+           {/* Comment Input */}
+           <div className="mb-8 bg-gray-50 p-4 rounded-2xl">
+              {user ? (
+                  <>
+                    <div className="flex items-center gap-3 mb-3">
+                        <img src={user.avatar} className="w-8 h-8 rounded-full" alt="User" />
+                        <span className="text-sm font-bold text-gray-700">{user.name}</span>
+                        <div className="ml-auto">
+                            <StarRating rating={userRating} setRating={setUserRating} interactive size={18} />
+                        </div>
+                    </div>
+                    <div className="relative">
+                        <textarea 
+                            value={commentText}
+                            onChange={(e) => setCommentText(e.target.value)}
+                            placeholder="分享你的觀展心得..."
+                            className="w-full bg-white border-0 rounded-xl p-3 text-sm focus:ring-2 focus:ring-black min-h-[80px] resize-none pr-10"
+                        />
+                        <button 
+                            onClick={submitComment}
+                            disabled={!commentText.trim() || userRating === 0}
+                            className="absolute bottom-3 right-3 text-black disabled:text-gray-300 hover:scale-110 transition-transform"
+                        >
+                            <Send size={18} />
+                        </button>
+                    </div>
+                  </>
+              ) : (
+                  <div onClick={onLoginReq} className="text-center py-4 cursor-pointer">
+                      <p className="text-sm text-gray-500 font-medium">登入後即可發表評論</p>
+                  </div>
+              )}
+           </div>
+
+           {/* Comments List */}
+           <div className="space-y-6">
+              {exhibition.comments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400 text-sm">
+                     <MessageCircle size={32} className="mx-auto mb-2 opacity-20" />
+                     成為第一個評論的人吧！
+                  </div>
+              ) : (
+                  exhibition.comments.map(comment => (
+                      <div key={comment.id} className="flex gap-3">
+                          <img src={comment.userAvatar} className="w-9 h-9 rounded-full bg-gray-200 object-cover" alt={comment.userName} />
+                          <div className="flex-1">
+                              <div className="flex justify-between items-start mb-1">
+                                  <span className="text-sm font-bold">{comment.userName}</span>
+                                  <span className="text-[10px] text-gray-400">{comment.date}</span>
+                              </div>
+                              <div className="flex mb-2">
+                                  <StarRating rating={comment.rating} size={10} />
+                              </div>
+                              <p className="text-sm text-gray-600 leading-relaxed bg-gray-50 p-3 rounded-r-2xl rounded-bl-2xl">
+                                  {comment.text}
+                              </p>
+                          </div>
+                      </div>
+                  ))
+              )}
+           </div>
         </div>
       </div>
     </div>
@@ -2008,264 +1945,237 @@ function DetailView({
 }
 
 function LoginView({ onLogin, onCancel }: { onLogin: () => void, onCancel: () => void }) {
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      onLogin();
-    }, 800);
-  };
-
   return (
-    <div className="min-h-screen flex flex-col justify-center px-6 animate-in zoom-in-95 duration-300 -mt-20">
-      <div className="w-full max-w-sm mx-auto">
+    <div className="flex flex-col items-center justify-center min-h-[80vh] px-8 animate-in fade-in duration-300">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-10">
-          <Logo className="w-24 h-24 mx-auto mb-6" size="large" />
-          <h2 className="text-2xl font-bold font-serif mb-2">歡迎回來</h2>
-          <p className="text-gray-500 text-sm">登入 Mostra，開啟您的藝術旅程</p>
+           <Logo className="w-16 h-16 mx-auto mb-4" size="large" />
+           <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2">歡迎回來</h1>
+           <p className="text-gray-500">登入 Mostra，收藏你的藝術足跡</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <input 
-              type="email" 
-              defaultValue="ming@example.com"
-              className="w-full p-4 rounded-xl bg-gray-50 border border-gray-100 focus:bg-white focus:ring-2 focus:ring-black outline-none text-sm transition-all"
-              placeholder="電子郵件"
-            />
-          </div>
-          <div>
-            <input 
-              type="password" 
-              defaultValue="password"
-              className="w-full p-4 rounded-xl bg-gray-50 border border-gray-100 focus:bg-white focus:ring-2 focus:ring-black outline-none text-sm transition-all"
-              placeholder="密碼"
-            />
-          </div>
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-black text-white py-4 rounded-xl font-bold hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-black/20"
-          >
-            {loading ? <Loader2 size={20} className="animate-spin" /> : '登入帳號'}
-          </button>
-        </form>
-        
-        <div className="mt-8 text-center">
-          <button onClick={onCancel} className="text-sm text-gray-400 hover:text-black transition-colors">先隨便逛逛</button>
+        <div className="space-y-4">
+           <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 cursor-not-allowed opacity-60">
+              <div className="w-6 h-6 rounded-full bg-gray-200"></div>
+              <span className="text-sm font-bold text-gray-500">使用 Google 帳號登入 (Demo)</span>
+           </div>
+           
+           <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-200"></div>
+                <span className="flex-shrink mx-4 text-gray-400 text-xs">或</span>
+                <div className="flex-grow border-t border-gray-200"></div>
+           </div>
+
+           <form onSubmit={(e) => { e.preventDefault(); onLogin(); }} className="space-y-4">
+              <input 
+                 type="email" 
+                 defaultValue="ming@example.com"
+                 className="w-full bg-gray-50 border-0 rounded-xl p-4 text-sm focus:ring-2 focus:ring-black"
+                 placeholder="Email"
+              />
+              <input 
+                 type="password" 
+                 defaultValue="password"
+                 className="w-full bg-gray-50 border-0 rounded-xl p-4 text-sm focus:ring-2 focus:ring-black"
+                 placeholder="Password"
+              />
+              <button 
+                type="submit"
+                className="w-full bg-black text-white p-4 rounded-xl font-bold shadow-lg shadow-black/20 active:scale-95 transition-transform"
+              >
+                登入
+              </button>
+           </form>
         </div>
+        
+        <button onClick={onCancel} className="mt-8 text-sm text-gray-400 w-full text-center hover:text-black">
+            暫時略過
+        </button>
       </div>
     </div>
   );
 }
 
 function ProfileView({ user, onLogout }: { user: User, onLogout: () => void }) {
-    return (
-        <div className="min-h-[80vh] flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 w-full max-w-sm text-center">
-                <div className="relative inline-block mb-4">
-                    <img src={user.avatar} className="w-24 h-24 rounded-full object-cover border-4 border-gray-50" />
-                    <div className="absolute bottom-0 right-0 bg-green-500 w-5 h-5 rounded-full border-4 border-white"></div>
-                </div>
-                <h2 className="text-xl font-bold mb-1">{user.name}</h2>
-                <p className="text-gray-400 text-sm mb-6">{user.email}</p>
-                
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="bg-gray-50 p-3 rounded-xl">
-                        <span className="block text-xl font-bold">{user.bookmarkedExhibitionIds.length}</span>
-                        <span className="text-xs text-gray-500">收藏展覽</span>
-                    </div>
-                    <div className="bg-gray-50 p-3 rounded-xl">
-                        <span className="block text-xl font-bold">5</span>
-                        <span className="text-xs text-gray-500">發表評論</span>
-                    </div>
-                </div>
+  return (
+    <div className="px-4 py-8 animate-in fade-in duration-500">
+       <div className="flex items-center gap-4 mb-8">
+          <img src={user.avatar} className="w-20 h-20 rounded-full border-2 border-white shadow-md" alt={user.name} />
+          <div>
+             <h1 className="text-2xl font-serif font-bold">{user.name}</h1>
+             <p className="text-sm text-gray-500">{user.email}</p>
+             <div className="flex gap-2 mt-2">
+                <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full">Pro 會員</span>
+                <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">等級 3</span>
+             </div>
+          </div>
+       </div>
 
-                <button 
-                    onClick={onLogout}
-                    className="w-full py-3 rounded-xl border border-red-100 text-red-500 font-bold text-sm hover:bg-red-50 flex items-center justify-center gap-2"
-                >
-                    <LogIn size={16} className="rotate-180" />
-                    登出帳號
-                </button>
-            </div>
-        </div>
-    )
+       <div className="grid grid-cols-2 gap-4 mb-8">
+           <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+              <span className="block text-2xl font-bold font-serif mb-1">{user.bookmarkedExhibitionIds.length}</span>
+              <span className="text-xs text-gray-400 font-bold uppercase">收藏展覽</span>
+           </div>
+           <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm text-center">
+              <span className="block text-2xl font-bold font-serif mb-1">12</span>
+              <span className="text-xs text-gray-400 font-bold uppercase">已評論</span>
+           </div>
+       </div>
+
+       <div className="space-y-2">
+           <button className="w-full bg-white p-4 rounded-xl text-left font-bold text-sm border border-gray-100 flex justify-between items-center group active:scale-[0.98] transition-transform">
+               <span>編輯個人檔案</span>
+               <ArrowRight size={16} className="text-gray-300 group-hover:text-black" />
+           </button>
+           <button className="w-full bg-white p-4 rounded-xl text-left font-bold text-sm border border-gray-100 flex justify-between items-center group active:scale-[0.98] transition-transform">
+               <span>通知設定</span>
+               <ArrowRight size={16} className="text-gray-300 group-hover:text-black" />
+           </button>
+           <button className="w-full bg-white p-4 rounded-xl text-left font-bold text-sm border border-gray-100 flex justify-between items-center group active:scale-[0.98] transition-transform">
+               <span>關於 Mostra</span>
+               <ArrowRight size={16} className="text-gray-300 group-hover:text-black" />
+           </button>
+       </div>
+
+       <button 
+         onClick={onLogout}
+         className="w-full mt-8 p-4 rounded-xl text-red-500 bg-red-50 font-bold text-sm hover:bg-red-100 transition-colors"
+       >
+         登出帳號
+       </button>
+    </div>
+  );
 }
 
 function SubmitView({ user, onSubmit, onCancel }: { user: User, onSubmit: (ex: Exhibition) => void, onCancel: () => void }) {
-  const [formData, setFormData] = useState({
-    title: '',
-    artist: '',
-    description: '',
-    location: '',
-    category: '藝廊',
-    priceMode: 'free' as 'free' | 'paid',
-    imageUrl: '',
-    dateRange: '',
-    sourceUrl: ''
-  });
-  const [aiGenerating, setAiGenerating] = useState(false);
+  const [step, setStep] = useState(1);
+  const [idea, setIdea] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Form State
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [category, setCategory] = useState("藝廊");
 
-  const handleAiAutoFill = async () => {
-    if (!formData.description) return;
-    setAiGenerating(true);
-    const result = await enhanceExhibitionDraft(formData.description);
-    setFormData(prev => ({
-      ...prev,
-      title: result.title,
-      description: result.description
-    }));
-    setAiGenerating(false);
+  const handleSmartFill = async () => {
+    if (!idea.trim()) return;
+    setIsProcessing(true);
+    const result = await enhanceExhibitionDraft(idea);
+    setTitle(result.title);
+    setDescription(result.description);
+    setIsProcessing(false);
+    setStep(2);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFinalSubmit = () => {
     const newExhibition: Exhibition = {
-      id: Date.now().toString(),
-      ...formData,
-      type: 'minor', // User submissions default to minor for now
-      tags: ['網友推薦', '最新展訊'],
-      comments: [],
+      id: `u-${Date.now()}`,
+      title,
+      description,
+      artist: user.name, // Self-curated
+      dateRange: '2024/09/01 - 2024/10/01', // Mock
+      location: location || '台北市',
+      category,
+      type: 'minor',
+      priceMode: 'free',
+      imageUrl: 'https://images.unsplash.com/photo-1505567745926-ba89000d255a?q=80&w=800&auto=format&fit=crop', // Mock image
+      tags: ['使用者投稿', '新展訊'],
       rating: 0,
-      imageUrl: formData.imageUrl || `https://picsum.photos/id/${Math.floor(Math.random() * 100)}/800/600`,
-      sourceUrl: formData.sourceUrl || '',
+      comments: [],
+      sourceUrl: '',
       bookmarksCount: 0
     };
     onSubmit(newExhibition);
   };
 
   return (
-    <div className="min-h-screen bg-white animate-in slide-in-from-bottom-20 duration-500 pb-20">
-      <div className="sticky top-0 bg-white/90 backdrop-blur border-b border-gray-100 px-4 pb-4 flex items-center justify-between z-10 safe-top pt-[calc(env(safe-area-inset-top)+1.5rem)]">
-        <button onClick={onCancel} className="text-base font-medium text-gray-500">取消</button>
-        <h1 className="font-bold text-xl">提交展訊</h1>
-        <button 
-          onClick={handleSubmit} 
-          form="submit-form"
-          className="text-base font-bold text-blue-600"
-        >
-          發布
-        </button>
-      </div>
+    <div className="px-4 py-8 animate-in slide-in-from-bottom-5 duration-300">
+       <div className="flex justify-between items-center mb-8">
+          <button onClick={onCancel} className="p-2 -ml-2 text-gray-400 hover:text-black"><X size={24} /></button>
+          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">發布展訊 {step}/2</span>
+          <div className="w-8"></div>
+       </div>
 
-      <div className="p-5">
-        <form id="submit-form" onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
-             <div>
-               <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">展覽標題</label>
-               <input 
-                 required
-                 className="w-full text-lg font-bold border-b border-gray-200 py-2 focus:border-black outline-none rounded-none placeholder:text-gray-300"
-                 placeholder="輸入標題"
-                 value={formData.title}
-                 onChange={e => setFormData({...formData, title: e.target.value})}
-               />
-             </div>
-             <div>
-               <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">藝術家 / 單位</label>
-               <input 
-                 required
-                 className="w-full text-base border-b border-gray-200 py-2 focus:border-black outline-none rounded-none placeholder:text-gray-300"
-                 placeholder="例如：亞紀畫廊"
-                 value={formData.artist}
-                 onChange={e => setFormData({...formData, artist: e.target.value})}
-               />
-             </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-xl">
-             <div className="flex justify-between items-center mb-2">
-               <label className="text-xs font-bold text-gray-500 uppercase">展覽介紹</label>
-               <button 
-                type="button" 
-                onClick={handleAiAutoFill}
-                disabled={!formData.description || aiGenerating}
-                className="text-[10px] flex items-center gap-1 text-purple-600 bg-white border border-purple-100 px-2 py-1 rounded-full shadow-sm active:scale-95 transition-transform"
-               >
-                 {aiGenerating ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10} />}
-                 AI 優化文案
-               </button>
-             </div>
-             <textarea 
-                required
-                className="w-full bg-transparent border-0 p-0 text-sm h-32 resize-none focus:ring-0 placeholder:text-gray-400"
-                placeholder="簡單描述展覽內容，AI 可以幫您修飾得更好..."
-                value={formData.description}
-                onChange={e => setFormData({...formData, description: e.target.value})}
-             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">地點</label>
-              <input 
-                required
-                className="input-base"
-                placeholder="城市, 館名"
-                value={formData.location}
-                onChange={e => setFormData({...formData, location: e.target.value})}
-              />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">日期</label>
-              <input 
-                required
-                className="input-base"
-                placeholder="YYYY/MM/DD"
-                value={formData.dateRange}
-                onChange={e => setFormData({...formData, dateRange: e.target.value})}
-              />
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">分類</label>
-              <select 
-                className="input-base"
-                value={formData.category}
-                onChange={e => setFormData({...formData, category: e.target.value})}
-              >
-                <option value="藝廊">藝廊</option>
-                <option value="複合空間">複合空間</option>
-                <option value="實驗藝術">實驗藝術</option>
-                <option value="書店">書店</option>
-                <option value="咖啡廳">咖啡廳</option>
-                <option value="校園展">校園展</option>
-                <option value="美術館">美術館</option>
-                <option value="博物館">博物館</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">收費模式</label>
-              <select 
-                className="input-base"
-                value={formData.priceMode}
-                onChange={e => setFormData({...formData, priceMode: e.target.value as 'free'|'paid'})}
-              >
-                <option value="free">免費參觀</option>
-                <option value="paid">售票/消費</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-bold text-gray-500 uppercase block mb-1.5">資料來源網址</label>
-            <input 
-              required
-              type="url"
-              className="input-base"
-              placeholder="https://..."
-              value={formData.sourceUrl}
-              onChange={e => setFormData({...formData, sourceUrl: e.target.value})}
+       {step === 1 ? (
+         <>
+            <h1 className="text-3xl font-serif font-bold mb-4">你想分享什麼展覽？</h1>
+            <p className="text-gray-500 mb-8">簡單描述展覽內容，AI 助手會幫你生成吸引人的標題與介紹。</p>
+            
+            <textarea 
+              value={idea}
+              onChange={(e) => setIdea(e.target.value)}
+              className="w-full bg-gray-50 border-0 rounded-2xl p-5 text-lg min-h-[200px] focus:ring-2 focus:ring-black mb-6"
+              placeholder="例如：在華山文創園區的一個關於貓咪的攝影展，有很多可愛的照片..."
             />
-          </div>
-        </form>
-      </div>
+
+            <button 
+               onClick={handleSmartFill}
+               disabled={!idea.trim() || isProcessing}
+               className="w-full bg-black text-white p-4 rounded-xl font-bold shadow-lg shadow-black/20 active:scale-95 transition-transform flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+               {isProcessing ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
+               {isProcessing ? "AI 正在思考..." : "下一步：AI 智慧填寫"}
+            </button>
+            
+            <button 
+              onClick={() => setStep(2)} 
+              className="w-full mt-4 py-3 text-sm text-gray-400 font-bold hover:text-black"
+            >
+              跳過 AI，手動填寫
+            </button>
+         </>
+       ) : (
+         <div className="space-y-5 animate-in fade-in slide-in-from-right-10 duration-300">
+            <div>
+               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">展覽標題</label>
+               <input 
+                 value={title}
+                 onChange={(e) => setTitle(e.target.value)}
+                 className="w-full bg-gray-50 border-0 rounded-xl p-4 font-bold"
+               />
+            </div>
+            <div>
+               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">展覽介紹</label>
+               <textarea 
+                 value={description}
+                 onChange={(e) => setDescription(e.target.value)}
+                 className="w-full bg-gray-50 border-0 rounded-xl p-4 min-h-[120px]"
+               />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+               <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">地點</label>
+                  <input 
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="例如：台北市"
+                    className="w-full bg-gray-50 border-0 rounded-xl p-4"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-2">分類</label>
+                  <select 
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full bg-gray-50 border-0 rounded-xl p-4 appearance-none"
+                  >
+                     <option>藝廊</option>
+                     <option>博物館</option>
+                     <option>文創園區</option>
+                     <option>校園展</option>
+                  </select>
+               </div>
+            </div>
+
+            <button 
+               onClick={handleFinalSubmit}
+               className="w-full bg-black text-white p-4 rounded-xl font-bold shadow-lg shadow-black/20 active:scale-95 transition-transform mt-8"
+            >
+               確認發布
+            </button>
+         </div>
+       )}
     </div>
   );
 }
